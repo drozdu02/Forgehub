@@ -2,6 +2,7 @@ import { Column, CreateDateColumn, Entity, JoinColumn, OneToMany, PrimaryGenerat
 import type { Relation } from "typeorm";
 import { OrganizationMember } from "../../organizations/entities/organization-member.entity.js";
 import { Task } from "../../tasks/entities/task.entity.js";
+import { Session } from "../../auth/entities/session.entity.js";
 
 @Entity('users')
 export class User {
@@ -19,6 +20,12 @@ export class User {
         (task) => task.assignee
     )
     tasks: Relation<Task[]>;
+
+    @OneToMany(
+        () => Session,
+        (session) => session.user
+    )
+    sessions: Session[];
 
     @Column({ name: 'password_hash' })
     passwordHash: string;

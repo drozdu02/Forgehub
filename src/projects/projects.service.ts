@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, UseGuards } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Project } from './entities/project.entity.js';
@@ -7,6 +7,7 @@ import { PaginatedResultDto } from './dto/paginated-result.dto.js';
 import { CreateProjectDto } from './dto/create-project.dto.js';
 import { Organization } from '../organizations/entities/organization.entity.js';
 import { UpdateProjectDto } from './dto/update-project.dto.js';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 
 @Injectable()
 export class ProjectsService {
@@ -17,6 +18,7 @@ export class ProjectsService {
         private readonly organizationRepository: Repository<Organization>
     ){}
 
+    @UseGuards(JwtAuthGuard)
     async getAllProjects(
         paginationQueryDto: PaginationQueryDto
     ): Promise<PaginatedResultDto<Project>> {
@@ -38,6 +40,7 @@ export class ProjectsService {
         }
     }
 
+    @UseGuards(JwtAuthGuard)
     async getProjectById(
         projectId: number
     ): Promise<Project> {
@@ -57,6 +60,7 @@ export class ProjectsService {
         return project;
     }
 
+    @UseGuards(JwtAuthGuard)
     async getProjectsByOrganizationId(
         organizationId: number,
         paginationQueryDto: PaginationQueryDto
@@ -93,6 +97,7 @@ export class ProjectsService {
         };
     }
 
+    @UseGuards(JwtAuthGuard)
     async createProject(
         organizationId: number,
         createProjectDto: CreateProjectDto
@@ -111,6 +116,7 @@ export class ProjectsService {
         return this.projectRepository.save(project);
     }
 
+    @UseGuards(JwtAuthGuard)
     async deleteProject(
         projectId: number
     ): Promise<void> {
@@ -121,6 +127,7 @@ export class ProjectsService {
         }
     }
 
+    @UseGuards(JwtAuthGuard)
     async updateProject(
         projectId: number,
         updateProjectDto: UpdateProjectDto
