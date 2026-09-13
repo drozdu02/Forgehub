@@ -103,7 +103,8 @@ export class AuthService {
         await this.sessionRepository.save(session);
 
         return {
-            accessToken: accessToken
+            accessToken: accessToken,
+            refreshToken: refreshToken
         };
     }
 }
