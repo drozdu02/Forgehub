@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException,  UnauthorizedException } from '@nestjs/common';
 import { PasswordService } from './password.service.js';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from '../user/entities/user.entity.js';
@@ -9,6 +9,8 @@ import { LoginDto } from './dto/login.dto.js';
 import { LoginResponseDto } from './dto/login-response.dto.js';
 import { JwtService } from '@nestjs/jwt';
 import { JwtPayload } from './interfaces/jwt-payload.interface.js';
+import { createHash, randomBytes } from 'crypto';
+import { Session } from './entities/session.entity.js';
 
 @Injectable()
 export class AuthService {
@@ -16,9 +18,21 @@ export class AuthService {
 
         @InjectRepository(User)
         private readonly userRepository: Repository<User>,
+        @InjectRepository(Session)
+        private readonly sessionRepository: Repository<Session>,
         private readonly passwordService: PasswordService,
         private readonly jwtService: JwtService
     ) {}
+
+    private generateRefreshToken(): string {
+        return randomBytes(64).toString('hex');
+    }
+
+    private hashRefreshToken(refreshToken: string): string {
+        return createHash('sha-256')
+            .update(refreshToken)
+            .digest('hex');
+    }
 
 
     async register(
@@ -75,10 +89,20 @@ export class AuthService {
             sub: user.id,
         };
 
+        const refreshToken = this.generateRefreshToken();
+        const refreshTokenHash = this.hashRefreshToken(refreshToken);
+
         const accessToken = await this.jwtService.signAsync(payload);
 
+        const session = await this.sessionRepository.create({
+            user,
+            refreshTokenHash,
+            expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30),
+        });
+
+        await this.sessionRepository.save(session);
+
         return {
-            email: user.email,
             accessToken: accessToken
         };
     }

@@ -6,12 +6,12 @@ import { User } from '../user/entities/user.entity.js';
 import { PasswordService } from './password.service.js';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { StringValue } from 'ms';
 import { JwtStrategy } from './strategies/jwt.strategy.js';
+import { Session } from './entities/session.entity.js';
 @Module({
   imports: [
     ConfigModule,
-    TypeOrmModule.forFeature([User]),
+    TypeOrmModule.forFeature([User, Session]),
     JwtModule.registerAsync({
       inject: [ConfigService],
 
