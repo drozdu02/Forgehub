@@ -1,4 +1,5 @@
 import { Column, CreateDateColumn, Entity, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
+import type { Relation } from "typeorm";
 import { User } from "../../user/entities/user.entity.js";
 
 @Entity('sessions')
@@ -12,7 +13,7 @@ export class Session {
             onDelete: 'CASCADE'
         },
     )
-    user: User;
+    user: Relation<User>;
 
     @Column({name: 'refresh_token_hash'})
     refreshTokenHash: string

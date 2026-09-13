@@ -25,7 +25,7 @@ export class User {
         () => Session,
         (session) => session.user
     )
-    sessions: Session[];
+    sessions: Relation<Session[]>;
 
     @Column({ name: 'password_hash' })
     passwordHash: string;
