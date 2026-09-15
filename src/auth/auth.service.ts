@@ -35,6 +35,15 @@ export class AuthService {
             .digest('hex');
     }
 
+    private async generateAccessToken(
+        userId: number
+    ): Promise<string> {
+        const payload: JwtPayload = {
+            sub: userId
+        };
+        return this.jwtService.signAsync(payload);
+    }
+
 
     async register(
         registerDto: RegisterDto
@@ -86,14 +95,12 @@ export class AuthService {
             throw new UnauthorizedException(`Invalid email or password`);
         }
 
-        const payload: JwtPayload = {
-            sub: user.id,
-        };
+        
 
         const refreshToken = this.generateRefreshToken();
         const refreshTokenHash = this.hashRefreshToken(refreshToken);
 
-        const accessToken = await this.jwtService.signAsync(payload);
+        const accessToken = await this.generateAccessToken(user.id);
 
         const session = await this.sessionRepository.create({
             user,

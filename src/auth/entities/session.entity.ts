@@ -18,7 +18,7 @@ export class Session {
     @Column({name: 'refresh_token_hash'})
     refreshTokenHash: string
 
-    @Column({type: 'timestamp'})
+    @Column({type: 'timestamptz'})
     expiresAt: Date;
 
     @CreateDateColumn()
