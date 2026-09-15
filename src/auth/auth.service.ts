@@ -11,6 +11,7 @@ import { JwtService } from '@nestjs/jwt';
 import { JwtPayload } from './interfaces/jwt-payload.interface.js';
 import { createHash, randomBytes } from 'crypto';
 import { Session } from './entities/session.entity.js';
+import { RefreshResultDto } from './dto/refresh-result.dto.js';
 
 @Injectable()
 export class AuthService {
@@ -106,5 +107,67 @@ export class AuthService {
             accessToken: accessToken,
             refreshToken: refreshToken
         };
+    }
+
+    async refresh(
+        refreshToken: string
+    ): Promise<RefreshResultDto> {
+
+        const refreshTokenHash = this.hashRefreshToken(refreshToken)
+
+        const session = await this.sessionRepository.findOne({
+            where: {
+                refreshTokenHash,
+            },
+            relations: {
+                user: true
+            },
+
+        });
+
+        if (!session) {
+            throw new UnauthorizedException('Invalid refresh token');
+        }
+
+        if (session.revokedAt === null) {
+            throw new UnauthorizedException('Refresh token revoked');
+        }
+
+        if (session.expiresAt <= new Date()) {
+            throw new UnauthorizedException('Refresh token expired');
+        }
+
+        const accessToken = await this.jwtService.signAsync({
+            sub: session.user.id
+        });
+
+        const newRefreshToken = this.generateRefreshToken();
+        session.refreshTokenHash = this.hashRefreshToken(newRefreshToken);
+
+        await this.sessionRepository.save(session);
+
+        return {
+            accessToken,
+            refreshToken
+        }
+    }
+
+    async logout(
+        refreshToken: string
+    ): Promise<void> {
+
+        const refreshTokenHash = this.hashRefreshToken(refreshToken);
+
+        const session = await this.sessionRepository.findOne({
+            where: {
+                refreshTokenHash: refreshTokenHash
+            },
+        });
+
+        if (!session) {
+            return;
+        }
+        session.revokedAt = new Date();
+        await this.sessionRepository.save(session);
     }
 }
