@@ -12,6 +12,8 @@ import { JwtPayload } from './interfaces/jwt-payload.interface.js';
 import { createHash, randomBytes } from 'crypto';
 import { Session } from './entities/session.entity.js';
 import { RefreshResultDto } from './dto/refresh-result.dto.js';
+import { Project } from '../projects/entities/project.entity.js';
+import { Permission } from './enums/permissions.enum.js';
 
 @Injectable()
 export class AuthService {
@@ -21,8 +23,11 @@ export class AuthService {
         private readonly userRepository: Repository<User>,
         @InjectRepository(Session)
         private readonly sessionRepository: Repository<Session>,
+        @InjectRepository(Project)
+        private readonly projectRepository: Repository<Project>,
+
         private readonly passwordService: PasswordService,
-        private readonly jwtService: JwtService
+        private readonly jwtService: JwtService,
     ) {}
 
     private generateRefreshToken(): string {

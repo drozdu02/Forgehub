@@ -8,10 +8,11 @@ import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtStrategy } from './strategies/jwt.strategy.js';
 import { Session } from './entities/session.entity.js';
+import { Project } from '../projects/entities/project.entity.js';
 @Module({
   imports: [
     ConfigModule,
-    TypeOrmModule.forFeature([User, Session]),
+    TypeOrmModule.forFeature([User, Session, Project]),
     JwtModule.registerAsync({
       inject: [ConfigService],
 

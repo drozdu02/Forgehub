@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, UseGuards } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException, UseGuards } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Project } from './entities/project.entity.js';
@@ -8,6 +8,9 @@ import { CreateProjectDto } from './dto/create-project.dto.js';
 import { Organization } from '../organizations/entities/organization.entity.js';
 import { UpdateProjectDto } from './dto/update-project.dto.js';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
+import { ProjectAuthorizationContext } from './interfaces/project-authorization-context.interface.js';
+import { AuthorizationService } from '../auth/authorization/authorization.service.js';
+import { Permission } from '../auth/enums/permissions.enum.js';
 
 @Injectable()
 export class ProjectsService {
@@ -15,10 +18,11 @@ export class ProjectsService {
         @InjectRepository(Project)
         private readonly projectRepository: Repository<Project>,
         @InjectRepository(Organization)
-        private readonly organizationRepository: Repository<Organization>
+        private readonly organizationRepository: Repository<Organization>,
+
+        private readonly authorizationService: AuthorizationService
     ){}
 
-    @UseGuards(JwtAuthGuard)
     async getAllProjects(
         paginationQueryDto: PaginationQueryDto
     ): Promise<PaginatedResultDto<Project>> {
@@ -40,7 +44,6 @@ export class ProjectsService {
         }
     }
 
-    @UseGuards(JwtAuthGuard)
     async getProjectById(
         projectId: number
     ): Promise<Project> {
@@ -60,7 +63,6 @@ export class ProjectsService {
         return project;
     }
 
-    @UseGuards(JwtAuthGuard)
     async getProjectsByOrganizationId(
         organizationId: number,
         paginationQueryDto: PaginationQueryDto
@@ -97,7 +99,6 @@ export class ProjectsService {
         };
     }
 
-    @UseGuards(JwtAuthGuard)
     async createProject(
         organizationId: number,
         createProjectDto: CreateProjectDto
@@ -116,18 +117,35 @@ export class ProjectsService {
         return this.projectRepository.save(project);
     }
 
-    @UseGuards(JwtAuthGuard)
     async deleteProject(
+        userId: number,
         projectId: number
     ): Promise<void> {
-        const result = await this.projectRepository.delete(projectId);
+        const project = await this.projectRepository.findOne({
+            where: {
+                id: projectId
+            },
+            relations: {
+                organization: true
+            },
+        });
 
-        if (result.affected === 0) {
+        if (!project) {
             throw new NotFoundException(`Project with id ${projectId} not found`);
         }
+
+        const allowed = await this.authorizationService.hasPermission(
+            userId,
+            project.organization.id,
+            Permission.PROJECT_DELETE
+        );
+
+        if (!allowed) {
+            throw new ForbiddenException('You do not have permissions to delete this project');
+        }
+        await this.projectRepository.delete(projectId);
     }
 
-    @UseGuards(JwtAuthGuard)
     async updateProject(
         projectId: number,
         updateProjectDto: UpdateProjectDto
@@ -141,6 +159,48 @@ export class ProjectsService {
             throw new NotFoundException(`Project with id ${projectId} not found`);
         }
         return this.projectRepository.save(project);
+    }
+
+    async canUserAccessProject(
+        userId: number,
+        projectId: number
+    ): Promise<number> {
+        const project = await this.projectRepository.findOne({
+            where: {
+                id: userId,
+            },
+            relations: {
+                organization: true
+            },
+        });
+
+        if (!project) {
+            throw new NotFoundException(`Project with id ${projectId} not found`);
+        }
+
+        return project.organization.id;
+    }
+
+    async getProjectAuthorizationContext(
+        projectId: number
+    ): Promise<ProjectAuthorizationContext> {
+        const project = await this.projectRepository.findOne({
+            where: {
+                id: projectId
+            },
+            relations: {
+                organization: true
+            },
+        });
+
+        if (!project) {
+            throw new NotFoundException(`Project with id ${projectId} not found`);
+        }
+
+        return {
+            projectId: project.id,
+            organizationId: project.organization.id
+        };
     }
 
     
