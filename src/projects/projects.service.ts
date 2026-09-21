@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException, UseGuards } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Project } from './entities/project.entity.js';
@@ -6,8 +6,11 @@ import { PaginationQueryDto } from './dto/pagination-query.dto.js';
 import { PaginatedResultDto } from './dto/paginated-result.dto.js';
 import { CreateProjectDto } from './dto/create-project.dto.js';
 import { Organization } from '../organizations/entities/organization.entity.js';
-import { skip } from 'node:test';
 import { UpdateProjectDto } from './dto/update-project.dto.js';
+import { ProjectAuthorizationContext } from './interfaces/project-authorization-context.interface.js';
+import { AuthorizationService } from '../auth/authorization/authorization.service.js';
+import { Permission } from '../auth/enums/permissions.enum.js';
+import { ProjectPolicy } from './policies/project.policy.js';
 
 @Injectable()
 export class ProjectsService {
@@ -15,8 +18,29 @@ export class ProjectsService {
         @InjectRepository(Project)
         private readonly projectRepository: Repository<Project>,
         @InjectRepository(Organization)
-        private readonly organizationRepository: Repository<Organization>
+        private readonly organizationRepository: Repository<Organization>,
+
+        private readonly authorizationService: AuthorizationService,
+        private readonly projectPolicy: ProjectPolicy,
     ){}
+
+    private async getProjectForAuthorization(
+        projectId: number
+    ): Promise<Project> {
+        const project = await this.projectRepository.findOne({
+            where: {
+                id: projectId
+            },
+            relations: {
+                organization: true
+            },
+        });
+
+        if (!project) {
+            throw new NotFoundException(`Project with id ${projectId} not found`);
+        }
+        return project;
+    }
 
     async getAllProjects(
         paginationQueryDto: PaginationQueryDto
@@ -40,20 +64,18 @@ export class ProjectsService {
     }
 
     async getProjectById(
-        projectId: number
+        userId: number,
+        projectId: number,
     ): Promise<Project> {
-        const project = await this.projectRepository.findOne({
-            where: {
-                id: projectId
-            },
-            relations: {
-                organization: true
-            },
-        });
+        const project = await this.getProjectForAuthorization(
+            projectId
+        );
 
-        if (!project) {
-            throw new NotFoundException(`Project with id ${projectId} not found`)
-        }
+        await this.projectPolicy.can(
+            userId,
+            project,
+            Permission.PROJECT_READ
+        );
 
         return project;
     }
@@ -113,28 +135,82 @@ export class ProjectsService {
     }
 
     async deleteProject(
+        userId: number,
         projectId: number
     ): Promise<void> {
-        const result = await this.projectRepository.delete(projectId);
+        const project = await this.getProjectForAuthorization(
+            projectId
+        );
 
-        if (result.affected === 0) {
-            throw new NotFoundException(`Project with id ${projectId} not found`);
-        }
+        await this.projectPolicy.can(
+            userId,
+            project,
+            Permission.PROJECT_DELETE
+        );
+        
+        await this.projectRepository.delete(projectId);
     }
 
     async updateProject(
+        userId: number,
         projectId: number,
         updateProjectDto: UpdateProjectDto
     ): Promise<Project> {
-        const project = await this.projectRepository.preload({
-            id: projectId,
-            ...updateProjectDto,
+        const project = await this.getProjectForAuthorization(
+            projectId
+        );
+
+        await this.projectPolicy.can(
+            userId,
+            project,
+            Permission.PROJECT_UPDATE
+        );
+
+        Object.assign(project, updateProjectDto);
+
+        return this.projectRepository.save(project);
+    }
+
+    async canUserAccessProject(
+        userId: number,
+        projectId: number
+    ): Promise<number> {
+        const project = await this.projectRepository.findOne({
+            where: {
+                id: userId,
+            },
+            relations: {
+                organization: true
+            },
         });
 
         if (!project) {
             throw new NotFoundException(`Project with id ${projectId} not found`);
         }
-        return this.projectRepository.save(project);
+
+        return project.organization.id;
+    }
+
+    async getProjectAuthorizationContext(
+        projectId: number
+    ): Promise<ProjectAuthorizationContext> {
+        const project = await this.projectRepository.findOne({
+            where: {
+                id: projectId
+            },
+            relations: {
+                organization: true
+            },
+        });
+
+        if (!project) {
+            throw new NotFoundException(`Project with id ${projectId} not found`);
+        }
+
+        return {
+            projectId: project.id,
+            organizationId: project.organization.id
+        };
     }
 
     

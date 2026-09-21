@@ -2,6 +2,8 @@ import { Column, CreateDateColumn, Entity, JoinColumn, OneToMany, PrimaryGenerat
 import type { Relation } from "typeorm";
 import { OrganizationMember } from "../../organizations/entities/organization-member.entity.js";
 import { Task } from "../../tasks/entities/task.entity.js";
+import { Session } from "../../auth/entities/session.entity.js";
+import { EmailVerificationCode } from "../../auth/entities/email-verification-code.entity.js";
 
 @Entity('users')
 export class User {
@@ -20,6 +22,21 @@ export class User {
     )
     tasks: Relation<Task[]>;
 
+    @OneToMany(
+        () => Session,
+        (session) => session.user
+    )
+    sessions: Relation<Session[]>;
+
+    @OneToMany(
+        () => EmailVerificationCode,
+        (emailVerificationCode) => emailVerificationCode.id
+    )
+    emailVerificationCodes: Relation<EmailVerificationCode[]>;
+
+    @Column({ name: 'password_hash' })
+    passwordHash: string;
+
     @Column()
     name: string;
 
@@ -31,6 +48,9 @@ export class User {
 
     @UpdateDateColumn()
     updatedAt: Date;
+
+    @Column({ type: 'timestamptz', nullable: true })
+    emailVerifiedAt: Date | null;
 
 }
 

@@ -7,11 +7,16 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { OrganizationsModule } from './organizations/organizations.module.js';
 import { TasksModule } from './tasks/tasks.module.js';
 import { ProjectsModule } from './projects/projects.module.js';
+import { AuthModule } from './auth/auth.module.js';
+import { ConfigModule } from '@nestjs/config';
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
 @Module({
   imports: [
+    ConfigModule.forRoot({
+      isGlobal: true
+    }),
     TypeOrmModule.forRoot({
       type: 'postgres',
       host: 'localhost',
@@ -21,7 +26,7 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
       database: 'forgehubdb',
       autoLoadEntities: true,
       synchronize: false,
-    }), UserModule, OrganizationsModule, TasksModule, ProjectsModule
+    }), UserModule, OrganizationsModule, TasksModule, ProjectsModule, AuthModule
   ],
   controllers: [AppController],
   providers: [AppService],
