@@ -7,10 +7,10 @@ import { PaginatedResultDto } from './dto/paginated-result.dto.js';
 import { CreateProjectDto } from './dto/create-project.dto.js';
 import { Organization } from '../organizations/entities/organization.entity.js';
 import { UpdateProjectDto } from './dto/update-project.dto.js';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import { ProjectAuthorizationContext } from './interfaces/project-authorization-context.interface.js';
 import { AuthorizationService } from '../auth/authorization/authorization.service.js';
 import { Permission } from '../auth/enums/permissions.enum.js';
+import { ProjectPolicy } from './policies/project.policy.js';
 
 @Injectable()
 export class ProjectsService {
@@ -20,8 +20,27 @@ export class ProjectsService {
         @InjectRepository(Organization)
         private readonly organizationRepository: Repository<Organization>,
 
-        private readonly authorizationService: AuthorizationService
+        private readonly authorizationService: AuthorizationService,
+        private readonly projectPolicy: ProjectPolicy,
     ){}
+
+    private async getProjectForAuthorization(
+        projectId: number
+    ): Promise<Project> {
+        const project = await this.projectRepository.findOne({
+            where: {
+                id: projectId
+            },
+            relations: {
+                organization: true
+            },
+        });
+
+        if (!project) {
+            throw new NotFoundException(`Project with id ${projectId} not found`);
+        }
+        return project;
+    }
 
     async getAllProjects(
         paginationQueryDto: PaginationQueryDto
@@ -45,20 +64,18 @@ export class ProjectsService {
     }
 
     async getProjectById(
-        projectId: number
+        userId: number,
+        projectId: number,
     ): Promise<Project> {
-        const project = await this.projectRepository.findOne({
-            where: {
-                id: projectId
-            },
-            relations: {
-                organization: true
-            },
-        });
+        const project = await this.getProjectForAuthorization(
+            projectId
+        );
 
-        if (!project) {
-            throw new NotFoundException(`Project with id ${projectId} not found`)
-        }
+        await this.projectPolicy.can(
+            userId,
+            project,
+            Permission.PROJECT_READ
+        );
 
         return project;
     }
@@ -121,43 +138,36 @@ export class ProjectsService {
         userId: number,
         projectId: number
     ): Promise<void> {
-        const project = await this.projectRepository.findOne({
-            where: {
-                id: projectId
-            },
-            relations: {
-                organization: true
-            },
-        });
-
-        if (!project) {
-            throw new NotFoundException(`Project with id ${projectId} not found`);
-        }
-
-        const allowed = await this.authorizationService.hasPermission(
-            userId,
-            project.organization.id,
-            Permission.PROJECT_DELETE
+        const project = await this.getProjectForAuthorization(
+            projectId
         );
 
-        if (!allowed) {
-            throw new ForbiddenException('You do not have permissions to delete this project');
-        }
+        await this.projectPolicy.can(
+            userId,
+            project,
+            Permission.PROJECT_DELETE
+        );
+        
         await this.projectRepository.delete(projectId);
     }
 
     async updateProject(
+        userId: number,
         projectId: number,
         updateProjectDto: UpdateProjectDto
     ): Promise<Project> {
-        const project = await this.projectRepository.preload({
-            id: projectId,
-            ...updateProjectDto,
-        });
+        const project = await this.getProjectForAuthorization(
+            projectId
+        );
 
-        if (!project) {
-            throw new NotFoundException(`Project with id ${projectId} not found`);
-        }
+        await this.projectPolicy.can(
+            userId,
+            project,
+            Permission.PROJECT_UPDATE
+        );
+
+        Object.assign(project, updateProjectDto);
+
         return this.projectRepository.save(project);
     }
 

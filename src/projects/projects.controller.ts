@@ -26,12 +26,19 @@ export class ProjectsController {
     );
   }
 
-  
+  @UseGuards(
+    JwtAuthGuard
+  )
   @Get(':id')
   getProjectById(
-    @Query('id', ParseIntPipe) projectId: number
+    @Param('id', ParseIntPipe) projectId: number,
+    
+    @CurrentUser() user: {userId: number}
   ): Promise<Project> {
-    return this.projectsService.getProjectById(projectId);
+    return this.projectsService.getProjectById(
+      user.userId,
+      projectId
+    );
   }
 
   @UseGuards(
@@ -42,6 +49,7 @@ export class ProjectsController {
   @Get(":organizationId/projects")
   getProjectsByOrganizationId(
     @Param('organizationId', ParseIntPipe) organizationId: number,
+
     @Query() paginationQueryDto: PaginationQueryDto
   ): Promise<PaginatedResultDto<Project>> {
     return this.projectsService.getProjectsByOrganizationId(
@@ -56,17 +64,25 @@ export class ProjectsController {
   @Delete(':id')
   deleteProjectById(
     @Param('id', ParseIntPipe) projectId: number,
+
     @CurrentUser() user: {userId: number}
   ): Promise<void> {
     return this.projectsService.deleteProject(user.userId, projectId);
   }
 
+  @UseGuards(
+    JwtAuthGuard
+  )
   @Patch(':id')
   updateProjectById(
     @Param('id', ParseIntPipe) projectId: number,
+
+    @CurrentUser() user: {userId: number},
+
     @Body() updateProjectDto: UpdateProjectDto
   ): Promise<Project> {
     return this.projectsService.updateProject(
+      user.userId,
       projectId,
       updateProjectDto
     );
