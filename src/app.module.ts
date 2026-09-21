@@ -10,6 +10,7 @@ import { ProjectsModule } from './projects/projects.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { ConfigModule } from '@nestjs/config';
 import { RedisModule } from './redis/redis.module.js';
+import { BullModule } from '@nestjs/bullmq';
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
@@ -17,6 +18,12 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
   imports: [
     ConfigModule.forRoot({
       isGlobal: true
+    }),
+    BullModule.forRoot({
+      connection: {
+        host: 'localhost',
+        port: 6379
+      }
     }),
     TypeOrmModule.forRoot({
       type: 'postgres',
