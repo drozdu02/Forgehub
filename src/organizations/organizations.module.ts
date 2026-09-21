@@ -7,13 +7,14 @@ import { OrganizationMember } from './entities/organization-member.entity.js';
 import { ProjectsService } from '../projects/projects.service.js';
 import { Project } from '../projects/entities/project.entity.js';
 import { AuthorizationService } from '../auth/authorization/authorization.service.js';
+import { ProjectPolicy } from '../projects/policies/project.policy.js';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Organization, OrganizationMember, Project])
   ],
   controllers: [OrganizationsController],
-  providers: [OrganizationsService, ProjectsService, AuthorizationService],
+  providers: [OrganizationsService, ProjectsService, AuthorizationService, ProjectPolicy],
   exports: [OrganizationsService]
 })
 export class OrganizationsModule {}

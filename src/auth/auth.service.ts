@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, NotFoundException,  UnauthorizedException } from '@nestjs/common';
+import { ConflictException, Injectable,  UnauthorizedException } from '@nestjs/common';
 import { PasswordService } from './password.service.js';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { User } from '../user/entities/user.entity.js';
@@ -9,11 +9,11 @@ import { LoginDto } from './dto/login.dto.js';
 import { LoginResponseDto } from './dto/login-response.dto.js';
 import { JwtService } from '@nestjs/jwt';
 import { JwtPayload } from './interfaces/jwt-payload.interface.js';
-import { createHash, randomBytes, randomUUID } from 'crypto';
+import { createHash, randomBytes, randomInt, randomUUID } from 'crypto';
 import { Session } from './entities/session.entity.js';
 import { RefreshResultDto } from './dto/refresh-result.dto.js';
 import { Project } from '../projects/entities/project.entity.js';
-import { Permission } from './enums/permissions.enum.js';
+import { EmailVerificationCode } from '../user/entities/email-verification-code.entity.js';
 
 @Injectable()
 export class AuthService {
@@ -25,6 +25,9 @@ export class AuthService {
         private readonly sessionRepository: Repository<Session>,
         @InjectRepository(Project)
         private readonly projectRepository: Repository<Project>,
+        @InjectRepository(EmailVerificationCode)
+        private readonly emailVerificationCodeRepository: Repository<EmailVerificationCode>,
+        
         @InjectDataSource()
         private readonly dataSource: DataSource,
 
@@ -42,6 +45,11 @@ export class AuthService {
             .digest('hex');
     }
 
+    private generateOtp(): string {
+        return randomInt(100000, 1000000)
+        .toString();
+    }
+
     private async generateAccessToken(
         userId: number
     ): Promise<string> {
@@ -49,6 +57,31 @@ export class AuthService {
             sub: userId
         };
         return this.jwtService.signAsync(payload);
+    }
+
+    async creatEmailVerificationCode(
+        user: User
+    ): Promise<void> {
+        const code = this.generateOtp();
+
+        const codeHash = await this.passwordService.hash(
+            code
+        );
+
+        const expiresAt = new Date(
+            Date.now() + 10 * 60 * 1000
+        );
+
+        const verificationCode = await this.emailVerificationCodeRepository.create({
+            user,
+            codeHash,
+            expiresAt,
+            usedAt: null
+        });
+
+        await this.emailVerificationCodeRepository.save(verificationCode);
+
+
     }
 
 
