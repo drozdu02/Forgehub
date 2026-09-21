@@ -10,6 +10,7 @@ import type { CookieOptions, Request, Response } from 'express';
 import { RefreshResultDto } from './dto/refresh-result.dto.js';
 import { ref } from 'process';
 import { LogoutResponseDto } from './dto/logout-response.dto.js';
+import { VerifyEmailDto } from './dto/verify-email.dto.js';
 
 @Controller('auth')
 export class AuthController {
@@ -117,6 +118,15 @@ export class AuthController {
     response.clearCookie(
       'refresh_token',
       this.getRefreshCookieClearOptions(),
+    );
+  }
+
+  @Post('verify-email')
+  async verifyEmail(
+    @Body() verifyEmailDto: VerifyEmailDto
+  ): Promise<void> {
+    return this.authService.verifyEmail(
+      verifyEmailDto
     );
   }
 

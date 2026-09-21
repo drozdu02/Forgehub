@@ -3,7 +3,7 @@ import type { Relation } from "typeorm";
 import { OrganizationMember } from "../../organizations/entities/organization-member.entity.js";
 import { Task } from "../../tasks/entities/task.entity.js";
 import { Session } from "../../auth/entities/session.entity.js";
-import { EmailVerificationCode } from "./email-verification-code.entity.js";
+import { EmailVerificationCode } from "../../auth/entities/email-verification-code.entity.js";
 
 @Entity('users')
 export class User {
@@ -32,7 +32,7 @@ export class User {
         () => EmailVerificationCode,
         (emailVerificationCode) => emailVerificationCode.id
     )
-    emailVerificationCode: Relation<EmailVerificationCode>;
+    emailVerificationCodes: Relation<EmailVerificationCode[]>;
 
     @Column({ name: 'password_hash' })
     passwordHash: string;
@@ -48,6 +48,9 @@ export class User {
 
     @UpdateDateColumn()
     updatedAt: Date;
+
+    @Column({ type: 'timestamptz', nullable: true })
+    emailVerifiedAt: Date | null;
 
 }
 

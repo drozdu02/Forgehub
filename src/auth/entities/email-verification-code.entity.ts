@@ -1,6 +1,6 @@
 import { Column, CreateDateColumn, Entity, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
 import type { Relation } from "typeorm";
-import { User } from "./user.entity.js";
+import { User } from "../../user/entities/user.entity.js";
 
 @Entity('email_verification_codes')
 export class EmailVerificationCode {
@@ -10,9 +10,7 @@ export class EmailVerificationCode {
 
     @ManyToOne(
         () => User,
-        {
-            onDelete: 'CASCADE'
-        },
+        user => user.emailVerificationCodes,
     )
     user: Relation<User>;
 

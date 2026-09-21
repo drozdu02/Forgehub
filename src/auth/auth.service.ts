@@ -1,8 +1,8 @@
-import { ConflictException, Injectable,  UnauthorizedException } from '@nestjs/common';
+import { ConflictException, Injectable,  NotFoundException,  UnauthorizedException } from '@nestjs/common';
 import { PasswordService } from './password.service.js';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { User } from '../user/entities/user.entity.js';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, IsNull, Repository } from 'typeorm';
 import { RegisterDto } from './dto/register.dto.js';
 import { RegisterResponseDto } from './dto/register-response.dto.js';
 import { LoginDto } from './dto/login.dto.js';
@@ -13,7 +13,8 @@ import { createHash, randomBytes, randomInt, randomUUID } from 'crypto';
 import { Session } from './entities/session.entity.js';
 import { RefreshResultDto } from './dto/refresh-result.dto.js';
 import { Project } from '../projects/entities/project.entity.js';
-import { EmailVerificationCode } from '../user/entities/email-verification-code.entity.js';
+import { EmailVerificationCode } from './entities/email-verification-code.entity.js';
+import { VerifyEmailDto } from './dto/verify-email.dto.js';
 
 @Injectable()
 export class AuthService {
@@ -274,5 +275,62 @@ export class AuthService {
             })
             .andWhere('revoked_at IS NULL')
             .execute();
+    }
+
+    async verifyEmail(
+        verifyEmailDto: VerifyEmailDto
+    ): Promise<void> {
+        return this.dataSource.transaction(
+            async manager => {
+                const user = await manager.findOne(User, {
+                    where: {
+                        email: verifyEmailDto.email
+                    },
+                });
+
+                if (!user) {
+                    throw new NotFoundException(`User with email ${verifyEmailDto.email} not found`);
+                }
+
+                const verificationCode = await manager.findOne(EmailVerificationCode, {
+                    where: {
+                        user: {
+                            id: user.id
+                        },
+                        usedAt: IsNull(),
+                    },
+                    order: {
+                        createdAt: 'DESC',
+                    },
+                    lock: {
+                        mode: 'pessimistic_write',
+                    },
+                });
+
+                if (!verificationCode) {
+                    throw new UnauthorizedException('Verification code not found');
+                }
+
+                if (verificationCode.expiresAt <= new Date()) {
+                    throw new UnauthorizedException('Verification code expired');
+                }
+
+                const isValid = this.passwordService.verify(
+                    verificationCode.codeHash,
+                    verifyEmailDto.code
+                );
+
+                if (!isValid) {
+                    throw new UnauthorizedException('Invalid verification code');
+                }
+
+                verificationCode.usedAt = new Date();
+                manager.save(EmailVerificationCode, verificationCode);
+
+                user.emailVerifiedAt = new Date();
+
+                await manager.save(User, user);
+            }
+        )
     }
 }
