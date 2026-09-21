@@ -7,7 +7,7 @@ export class Session {
     @PrimaryGeneratedColumn('uuid')
     id: string;
 
-    @Column({type: 'uuid'})
+    @Column({ name: 'family_id', type: 'uuid' })
     familyId: string;
 
     @ManyToOne(
@@ -18,18 +18,21 @@ export class Session {
     )
     user: Relation<User>;
 
-    @Column({name: 'refresh_token_hash'})
+    @Column({ name: 'refresh_token_hash' })
     refreshTokenHash: string
 
-    @Column({type: 'timestamptz'})
+    @Column({ name: 'expires_at', type: 'timestamptz' })
     expiresAt: Date;
 
-    @CreateDateColumn()
+    @CreateDateColumn({ name: 'created_at' })
     createdAt: Date;
 
-    @Column({type: 'timestamptz', nullable: true})
+    @Column({ name: 'revoked_at', type: 'timestamptz', nullable: true })
     revokedAt: Date | null;
 
-    @Column({ type: 'timestamptz', nullable: true})
+    @Column({ name: 'last_used_at', type: 'timestamptz', nullable: true})
     lastUsedAt: Date | null;
+
+    @Column({ name: 'replaced_by_session_id', type: 'uuid', nullable: true })
+    replacedBySessionId: string | null;
 }

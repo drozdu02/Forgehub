@@ -115,7 +115,8 @@ export class AuthService {
             refreshTokenHash,
             expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30),
             revokedAt: null,
-            lastUsedAt: null
+            lastUsedAt: null,
+            replacedBySessionId: null
         });
 
         await this.sessionRepository.save(session);
@@ -150,6 +151,21 @@ export class AuthService {
                     throw new UnauthorizedException('Invalid refresh token');
                 }
 
+                if (session.replacedBySessionId) {
+                    await manager
+                        .createQueryBuilder()
+                        .update(Session)
+                        .set({
+                            revokedAt: new Date(),
+                        })
+                        .where('family_id = :familyId', {
+                            familyId: session.familyId,
+                        })
+                        .andWhere('revoked_at IS NULL')
+                        .execute();
+                    throw new UnauthorizedException('Invalid refresh token');
+                }
+
                 if (session.revokedAt) {
                     throw new UnauthorizedException('Invalid refresh token');
                 }
@@ -161,8 +177,22 @@ export class AuthService {
                 const newRefreshToken = this.generateRefreshToken();
                 const newRefreshTokenHash = this.hashRefreshToken(newRefreshToken);
 
-                session.refreshTokenHash = newRefreshTokenHash;
+                const newSession = manager.create(Session, {
+                    familyId: session.familyId,
+                    userId: session.user.id,
+                    refreshTokenHash: newRefreshTokenHash,
+                    expiresAt: session.expiresAt,
+                    revokedAt: null,
+                    lastUsedAt: null,
+                    replacedBySessionId: null,
+                });
+
+
+                await manager.save(Session, newSession);
+
+                session.revokedAt = new Date();
                 session.lastUsedAt = new Date();
+                session.replacedBySessionId = newSession.id;
 
                 await manager.save(Session, session);
 
@@ -195,5 +225,21 @@ export class AuthService {
         }
         session.revokedAt = new Date();
         await this.sessionRepository.save(session);
+    }
+
+    async logoutAll(
+        userId: number
+    ): Promise<void> {
+        await this.sessionRepository
+            .createQueryBuilder()
+            .update(Session)
+            .set({
+                revokedAt: new Date()
+            })
+            .where('user_id = :userId', {
+                userId,
+            })
+            .andWhere('revoked_at IS NULL')
+            .execute();
     }
 }

@@ -6,7 +6,7 @@ import { LoginDto } from './dto/login.dto.js';
 import { LoginResponseDto } from './dto/login-response.dto.js';
 import { JwtAuthGuard } from './guards/jwt-auth.guard.js';
 import { CurrentUser } from './decorators/current-user.decorator.js';
-import type { Request, Response } from 'express';
+import type { CookieOptions, Request, Response } from 'express';
 import { RefreshResultDto } from './dto/refresh-result.dto.js';
 import { ref } from 'process';
 import { LogoutResponseDto } from './dto/logout-response.dto.js';
@@ -14,6 +14,17 @@ import { LogoutResponseDto } from './dto/logout-response.dto.js';
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
+
+  
+
+  private getRefreshCookieClearOptions(): CookieOptions {
+    return {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/auth',
+    };
+  }
 
   @Post('register')
   registerUser(
@@ -32,12 +43,7 @@ export class AuthController {
     response.cookie(
       'refresh_token',
       result.refreshToken,
-      {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 1000 * 60 * 60 * 24 * 30
-      },
+      this.getRefreshCookieClearOptions(),
     );
     return {
       accessToken: result.accessToken
@@ -60,12 +66,7 @@ export class AuthController {
     response.cookie(
       'refresh_token',
       result.refreshToken,
-      {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'prod',
-        sameSite: 'lax',
-        maxAge: 1000 * 60 * 60 * 24 * 30
-      },
+      this.getRefreshCookieClearOptions(),
     );
 
     return {
@@ -73,10 +74,11 @@ export class AuthController {
     }
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post('logout')
   async logout(
     @Req() request: Request,
-    @Res({passthrough: true}) response: Response
+    @Res({ passthrough: true }) response: Response
   ): Promise<LogoutResponseDto> { 
     const refreshToken = request.cookies.refresh_token;
 
@@ -84,7 +86,10 @@ export class AuthController {
       await this.authService.logout(refreshToken);
     }
 
-    response.clearCookie('refresh_token');
+    response.clearCookie(
+      'refresh_token',
+      this.getRefreshCookieClearOptions(),
+    );
 
     return {
       message: 'Logged out successfully'
@@ -97,6 +102,22 @@ export class AuthController {
     @CurrentUser() user : {userId: number}
   ) {
     return user;
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('logout-all')
+  async logoutAll(
+    @CurrentUser() user: {userId: number},
+    @Res({ passthrough: true }) response: Response
+  ): Promise<void> {
+    await this.authService.logoutAll(
+      user.userId
+    );
+
+    response.clearCookie(
+      'refresh_token',
+      this.getRefreshCookieClearOptions(),
+    );
   }
 
 }
