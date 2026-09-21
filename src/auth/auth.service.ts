@@ -1,4 +1,4 @@
-import { ConflictException, Injectable,  NotFoundException,  UnauthorizedException } from '@nestjs/common';
+import { ConflictException, HttpException, HttpStatus, Injectable,  NotFoundException,  UnauthorizedException } from '@nestjs/common';
 import { PasswordService } from './password.service.js';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { User } from '../user/entities/user.entity.js';
@@ -15,6 +15,7 @@ import { RefreshResultDto } from './dto/refresh-result.dto.js';
 import { Project } from '../projects/entities/project.entity.js';
 import { EmailVerificationCode } from './entities/email-verification-code.entity.js';
 import { VerifyEmailDto } from './dto/verify-email.dto.js';
+import { RedisService } from '../redis/redis.service.js';
 
 @Injectable()
 export class AuthService {
@@ -34,6 +35,7 @@ export class AuthService {
 
         private readonly passwordService: PasswordService,
         private readonly jwtService: JwtService,
+        private readonly redisService: RedisService,
     ) {}
 
     private generateRefreshToken(): string {
@@ -292,6 +294,20 @@ export class AuthService {
                     throw new NotFoundException(`User with email ${verifyEmailDto.email} not found`);
                 }
 
+                const attemptsKey = `otp:attempts:user:${user.id}`;
+
+                const attempts = await this.redisService.incrementWithTtl(
+                    attemptsKey,
+                    10 * 60
+                );
+
+                if (attempts > 5) {
+                    throw new HttpException(
+                        'Too many requests',
+                        HttpStatus.TOO_MANY_REQUESTS
+                    );
+                }
+
                 const verificationCode = await manager.findOne(EmailVerificationCode, {
                     where: {
                         user: {
@@ -315,6 +331,7 @@ export class AuthService {
                     throw new UnauthorizedException('Verification code expired');
                 }
 
+                
                 const isValid = this.passwordService.verify(
                     verificationCode.codeHash,
                     verifyEmailDto.code
@@ -330,6 +347,10 @@ export class AuthService {
                 user.emailVerifiedAt = new Date();
 
                 await manager.save(User, user);
+
+                await this.redisService.del(
+                    attemptsKey
+                );
             }
         )
     }
