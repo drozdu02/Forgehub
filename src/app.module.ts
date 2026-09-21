@@ -14,6 +14,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { MailModule } from './mail/mail.module.js';
 import { EventsModule } from './events/events.module.js';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import { AuditModule } from './audit/audit.module';
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
@@ -38,7 +39,7 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
       database: 'forgehubdb',
       autoLoadEntities: true,
       synchronize: false,
-    }), UserModule, OrganizationsModule, TasksModule, ProjectsModule, AuthModule, RedisModule, MailModule, EventsModule
+    }), UserModule, OrganizationsModule, TasksModule, ProjectsModule, AuthModule, RedisModule, MailModule, EventsModule, AuditModule
   ],
   controllers: [AppController],
   providers: [AppService],

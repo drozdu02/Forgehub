@@ -4,6 +4,7 @@ import { OrganizationMember } from "../../organizations/entities/organization-me
 import { Task } from "../../tasks/entities/task.entity.js";
 import { Session } from "../../auth/entities/session.entity.js";
 import { EmailVerificationCode } from "../../auth/entities/email-verification-code.entity.js";
+import { AuditLog } from "../../audit/entities/audit-log.entity.js";
 
 @Entity('users')
 export class User {
@@ -33,6 +34,12 @@ export class User {
         (emailVerificationCode) => emailVerificationCode.id
     )
     emailVerificationCodes: Relation<EmailVerificationCode[]>;
+
+    @OneToMany(
+        () => AuditLog,
+        (auditLog) => auditLog.actor
+    )
+    user: Relation<User>
 
     @Column({ name: 'password_hash' })
     passwordHash: string;

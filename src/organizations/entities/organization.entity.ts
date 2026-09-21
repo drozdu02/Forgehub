@@ -1,6 +1,8 @@
 import { Column, CreateDateColumn, Entity, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import type { Relation } from 'typeorm';
 import { OrganizationMember } from "./organization-member.entity.js";
 import { Project } from "../../projects/entities/project.entity.js";
+import { AuditLog } from "../../audit/entities/audit-log.entity.js";
 
 @Entity('organizations')
 export class Organization {
@@ -33,4 +35,11 @@ export class Organization {
         }
     )
     projects: Project[];
+
+    @OneToMany(
+        () => AuditLog,
+        (auditLog) => auditLog.organization
+    )
+    auditLog: Relation<AuditLog>
+
 }
