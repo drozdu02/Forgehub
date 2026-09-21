@@ -7,6 +7,9 @@ export class Session {
     @PrimaryGeneratedColumn('uuid')
     id: string;
 
+    @Column({type: 'uuid'})
+    familyId: string;
+
     @ManyToOne(
         () => User,
         (user) => user.sessions, {

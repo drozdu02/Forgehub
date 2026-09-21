@@ -9,7 +9,7 @@ import { LoginDto } from './dto/login.dto.js';
 import { LoginResponseDto } from './dto/login-response.dto.js';
 import { JwtService } from '@nestjs/jwt';
 import { JwtPayload } from './interfaces/jwt-payload.interface.js';
-import { createHash, randomBytes } from 'crypto';
+import { createHash, randomBytes, randomUUID } from 'crypto';
 import { Session } from './entities/session.entity.js';
 import { RefreshResultDto } from './dto/refresh-result.dto.js';
 import { Project } from '../projects/entities/project.entity.js';
@@ -110,9 +110,12 @@ export class AuthService {
         const accessToken = await this.generateAccessToken(user.id);
 
         const session = await this.sessionRepository.create({
+            familyId: randomUUID(),
             user,
             refreshTokenHash,
             expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30),
+            revokedAt: null,
+            lastUsedAt: null
         });
 
         await this.sessionRepository.save(session);
