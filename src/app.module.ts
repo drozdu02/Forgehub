@@ -9,6 +9,7 @@ import { TasksModule } from './tasks/tasks.module.js';
 import { ProjectsModule } from './projects/projects.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { ConfigModule } from '@nestjs/config';
+import { RedisModule } from './redis/redis.module.js';
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
@@ -26,7 +27,7 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
       database: 'forgehubdb',
       autoLoadEntities: true,
       synchronize: false,
-    }), UserModule, OrganizationsModule, TasksModule, ProjectsModule, AuthModule
+    }), UserModule, OrganizationsModule, TasksModule, ProjectsModule, AuthModule, RedisModule
   ],
   controllers: [AppController],
   providers: [AppService],
