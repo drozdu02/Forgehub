@@ -26,4 +26,7 @@ export class Session {
 
     @Column({type: 'timestamptz', nullable: true})
     revokedAt: Date | null;
+
+    @Column({ type: 'timestamptz', nullable: true})
+    lastUsedAt: Date | null;
 }

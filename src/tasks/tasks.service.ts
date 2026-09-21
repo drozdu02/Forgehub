@@ -29,6 +29,29 @@ export class TasksService {
         private readonly taskPolicy: TaskPolicy
     ){}
 
+
+    private async getTaskForAuthorization(
+        taskId: number
+    ): Promise<Task> {
+        const task = await this.taskRespository.findOne({
+            where: {
+                id: taskId
+            },
+            relations: {
+                project: {
+                    organization: true
+                },
+                assignee: true
+            },
+        });
+
+        if (!task) {
+            throw new NotFoundException(`Task with id ${taskId} not found`);
+        }
+
+        return task;
+    }
+
     async getAllTasks(paginationQueryDto: PaginationQueryDto): Promise<PaginatedResultDto<Task>> {
         const page = paginationQueryDto.page ?? 1;
         const limit = paginationQueryDto.limit ?? 10;
@@ -56,21 +79,9 @@ export class TasksService {
         userId: number,
         taskId: number
     ): Promise<Task> {
-        const task = await this.taskRespository.findOne({
-            where: {
-                id: taskId
-            },
-            relations: {
-                project: {
-                    organization: true
-                },
-            },
-        });
-
-
-        if (!task) {
-            throw new NotFoundException(`Task with id ${taskId} not found`);
-        }
+        const task = await this.getTaskForAuthorization(
+            taskId
+        );
 
         await this.taskPolicy.can(
             userId,
@@ -185,20 +196,9 @@ export class TasksService {
         userId: number,
         taskId: number,
     ): Promise<void> {
-        const task = await this.taskRespository.findOne({
-            where: {
-                id: taskId
-            },
-            relations: {
-                project: {
-                    organization: true
-                },
-            },
-        });
-
-        if (!task) {
-            throw new NotFoundException(`Task with id ${taskId} not found`);
-        }
+        const task = await this.getTaskForAuthorization(
+            taskId
+        );
 
         await this.taskPolicy.can(
             userId,
@@ -217,21 +217,9 @@ export class TasksService {
         taskId: number,
         updateTaskDto: UpdateTaskDto
     ): Promise<Task> {
-        const task = await this.taskRespository.findOne({
-            where: {
-                id: taskId
-            },
-            relations: {
-                project: {
-                    organization: true,
-                },
-                assignee: true,
-            },
-        });
-
-        if (!task) {
-            throw new NotFoundException(`Task with id ${taskId} not found`);
-        }
+        const task = await this.getTaskForAuthorization(
+            taskId
+        );
 
         await this.taskPolicy.can(
             userId,

@@ -1,8 +1,8 @@
 import { ConflictException, Injectable, NotFoundException,  UnauthorizedException } from '@nestjs/common';
 import { PasswordService } from './password.service.js';
-import { InjectRepository } from '@nestjs/typeorm';
+import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { User } from '../user/entities/user.entity.js';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { RegisterDto } from './dto/register.dto.js';
 import { RegisterResponseDto } from './dto/register-response.dto.js';
 import { LoginDto } from './dto/login.dto.js';
@@ -25,6 +25,8 @@ export class AuthService {
         private readonly sessionRepository: Repository<Session>,
         @InjectRepository(Project)
         private readonly projectRepository: Repository<Project>,
+        @InjectDataSource()
+        private readonly dataSource: DataSource,
 
         private readonly passwordService: PasswordService,
         private readonly jwtService: JwtService,
@@ -124,44 +126,53 @@ export class AuthService {
     async refresh(
         refreshToken: string
     ): Promise<RefreshResultDto> {
-
-        const refreshTokenHash = this.hashRefreshToken(refreshToken)
-
-        const session = await this.sessionRepository.findOne({
-            where: {
-                refreshTokenHash,
-            },
-            relations: {
-                user: true
-            },
-
-        });
-
-        if (!session) {
-            throw new UnauthorizedException('Invalid refresh token');
-        }
-
-        if (session.revokedAt === null) {
-            throw new UnauthorizedException('Refresh token revoked');
-        }
-
-        if (session.expiresAt <= new Date()) {
-            throw new UnauthorizedException('Refresh token expired');
-        }
-
-        const accessToken = await this.jwtService.signAsync({
-            sub: session.user.id
-        });
-
-        const newRefreshToken = this.generateRefreshToken();
-        session.refreshTokenHash = this.hashRefreshToken(newRefreshToken);
-
-        await this.sessionRepository.save(session);
-
-        return {
-            accessToken,
+        const refreshTokenHash = this.hashRefreshToken(
             refreshToken
-        }
+        );
+        return this.dataSource.transaction(
+            async (manager) => {
+                const session = await manager.findOne(Session, {
+                    where: {
+                        refreshTokenHash: refreshTokenHash
+                    },
+                    relations: {
+                        user: true
+                    },
+                    lock: {
+                        mode: 'pessimistic_write', tables: ['sessions']
+                    },
+                });
+
+                if (!session) {
+                    throw new UnauthorizedException('Invalid refresh token');
+                }
+
+                if (session.revokedAt) {
+                    throw new UnauthorizedException('Invalid refresh token');
+                }
+
+                if (session.expiresAt <= new Date()) {
+                    throw new UnauthorizedException('Invalid refresh token');
+                }
+
+                const newRefreshToken = this.generateRefreshToken();
+                const newRefreshTokenHash = this.hashRefreshToken(newRefreshToken);
+
+                session.refreshTokenHash = newRefreshTokenHash;
+                session.lastUsedAt = new Date();
+
+                await manager.save(Session, session);
+
+                const accessToken = await this.generateAccessToken(
+                    session.user.id
+                );
+
+                return {
+                    accessToken: accessToken,
+                    refreshToken: newRefreshToken
+                };
+            },
+        );
     }
 
     async logout(
