@@ -16,6 +16,7 @@ import { Project } from '../projects/entities/project.entity.js';
 import { EmailVerificationCode } from './entities/email-verification-code.entity.js';
 import { VerifyEmailDto } from './dto/verify-email.dto.js';
 import { RedisService } from '../redis/redis.service.js';
+import { MailService } from '../mail/mail.service.js';
 
 @Injectable()
 export class AuthService {
@@ -36,6 +37,7 @@ export class AuthService {
         private readonly passwordService: PasswordService,
         private readonly jwtService: JwtService,
         private readonly redisService: RedisService,
+        private readonly mailService: MailService,
     ) {}
 
     private generateRefreshToken(): string {
@@ -83,7 +85,12 @@ export class AuthService {
         });
 
         await this.emailVerificationCodeRepository.save(verificationCode);
-
+        
+        await this.mailService.enqueueVerificationEmail(
+            user.id,
+            user.email,
+            code
+        );
 
     }
 
