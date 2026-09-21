@@ -5,6 +5,7 @@ import { Task } from './entities/task.entity.js';
 import { PaginatedResultDto } from './dto/paginated-result.dto.js';
 import { CreateTaskDto } from './dto/create-task.dto.js';
 import { UpdateTaskDto } from './dto/update-task.dto.js';
+import { CurrentUser } from '../auth/decorators/current-user.decorator.js';
 
 @Controller('tasks')
 export class TasksController {
@@ -19,9 +20,15 @@ export class TasksController {
 
   @Get(':id')
   getTaskById(
-    @Param(':id', ParseIntPipe) taskId: number
+    @Param(':id', ParseIntPipe) taskId: number,
+
+    @CurrentUser() user: {userId: number}
+
   ) {
-    return this.tasksService.getTaskById(taskId);
+    return this.tasksService.getTaskById(
+      user.userId,
+      taskId
+    );
   }
 
   @Get('projects/:projectId/tasks')
@@ -50,9 +57,13 @@ export class TasksController {
   @Patch(':id')
   updateTask(
     @Param(':id', ParseIntPipe) taskId: number,
+
+    @CurrentUser() user: {userId: number},
+
     @Body() updateTaskDto: UpdateTaskDto
   ):Promise<Task> {
     return this.tasksService.updateTaskById(
+      user.userId,
       taskId,
       updateTaskDto
     );
@@ -60,9 +71,15 @@ export class TasksController {
 
   @Delete(':id')
   deleteTask(
-    @Param(':id', ParseIntPipe) taskId: number
+    @Param(':id', ParseIntPipe) taskId: number,
+
+    @CurrentUser() user: {userId: number},
+
   ): Promise<void> {
-    return this.tasksService.deleteTaskById(taskId);
+    return this.tasksService.deleteTaskById(
+      user.userId,
+      taskId
+    );
   }
 
 

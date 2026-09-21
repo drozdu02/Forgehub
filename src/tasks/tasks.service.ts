@@ -9,6 +9,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Project } from '../projects/entities/project.entity.js';
 import { User } from '../user/entities/user.entity.js';
 import { OrganizationMember } from '../organizations/entities/organization-member.entity.js';
+import { TaskPolicy } from './policies/task.policy.js';
+import { Permission } from '../auth/enums/permissions.enum.js';
 @Injectable()
 export class TasksService {
     constructor(
@@ -22,7 +24,9 @@ export class TasksService {
         private readonly userRepository: Repository<User>,
 
         @InjectRepository(OrganizationMember)
-        private readonly organizationMemberRepository: Repository<OrganizationMember>
+        private readonly organizationMemberRepository: Repository<OrganizationMember>,
+
+        private readonly taskPolicy: TaskPolicy
     ){}
 
     async getAllTasks(paginationQueryDto: PaginationQueryDto): Promise<PaginatedResultDto<Task>> {
@@ -49,15 +53,30 @@ export class TasksService {
     }
 
     async getTaskById(
+        userId: number,
         taskId: number
     ): Promise<Task> {
-        const task = await this.taskRespository.findOneBy({
-            id: taskId
+        const task = await this.taskRespository.findOne({
+            where: {
+                id: taskId
+            },
+            relations: {
+                project: {
+                    organization: true
+                },
+            },
         });
+
 
         if (!task) {
             throw new NotFoundException(`Task with id ${taskId} not found`);
         }
+
+        await this.taskPolicy.can(
+            userId,
+            task,
+            Permission.TASK_READ
+        );
 
         return task;
     }
@@ -163,19 +182,38 @@ export class TasksService {
     }
 
     async deleteTaskById(
-        taskId: number
+        userId: number,
+        taskId: number,
     ): Promise<void> {
-        const result = await this.taskRespository.delete({
-            id: taskId
+        const task = await this.taskRespository.findOne({
+            where: {
+                id: taskId
+            },
+            relations: {
+                project: {
+                    organization: true
+                },
+            },
         });
 
-        if (result.affected === 0) {
+        if (!task) {
             throw new NotFoundException(`Task with id ${taskId} not found`);
         }
+
+        await this.taskPolicy.can(
+            userId,
+            task,
+            Permission.TASK_READ
+        );
+
+        await this.taskRespository.delete({
+            id: taskId
+        });
 
     }
 
     async updateTaskById(
+        userId: number,
         taskId: number,
         updateTaskDto: UpdateTaskDto
     ): Promise<Task> {
@@ -187,12 +225,19 @@ export class TasksService {
                 project: {
                     organization: true,
                 },
+                assignee: true,
             },
         });
 
         if (!task) {
             throw new NotFoundException(`Task with id ${taskId} not found`);
         }
+
+        await this.taskPolicy.can(
+            userId,
+            task,
+            Permission.TASK_UPDATE
+        );
 
         if (updateTaskDto.assigneeId !== undefined) {
             if (updateTaskDto.assigneeId === null) {
