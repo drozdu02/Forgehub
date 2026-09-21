@@ -17,6 +17,7 @@ import { EmailVerificationCode } from './entities/email-verification-code.entity
 import { VerifyEmailDto } from './dto/verify-email.dto.js';
 import { RedisService } from '../redis/redis.service.js';
 import { MailService } from '../mail/mail.service.js';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 
 @Injectable()
 export class AuthService {
@@ -38,6 +39,7 @@ export class AuthService {
         private readonly jwtService: JwtService,
         private readonly redisService: RedisService,
         private readonly mailService: MailService,
+        private readonly eventEmmiter: EventEmitter2,
     ) {}
 
     private generateRefreshToken(): string {

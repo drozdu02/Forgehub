@@ -13,6 +13,7 @@ import { RedisModule } from './redis/redis.module.js';
 import { BullModule } from '@nestjs/bullmq';
 import { MailModule } from './mail/mail.module.js';
 import { EventsModule } from './events/events.module.js';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
@@ -27,6 +28,7 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
         port: 6379
       }
     }),
+    EventEmitterModule.forRoot(),
     TypeOrmModule.forRoot({
       type: 'postgres',
       host: 'localhost',
