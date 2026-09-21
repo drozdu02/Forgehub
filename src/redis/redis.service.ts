@@ -49,6 +49,21 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
         }
     }
 
+    async setIfNotExists(
+        key: string,
+        value: string,
+        ttlSeconds?: number
+    ): Promise<boolean> {
+        const result = await this.client.set(
+            key,
+            value,
+            'EX',
+            ttlSeconds ?? 0,
+            'NX',
+        );
+        return result === 'OK';
+    }
+
     async del(
         key: string
     ): Promise<void> {
@@ -62,6 +77,38 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     ): Promise<boolean> {
         return (await this.client.exists(key)) === 1;
     }
+
+    async increment(
+        key: string
+    ): Promise<number> {
+        return this.client.incr(key);
+    }
+
+    async incrementWithTtl(
+        key: string,
+        ttlSeconds: number
+    ): Promise<number> {
+        const count = await this.client.incr(key);
+
+        if (count === 1) {
+            await this.client.expire(
+                key,
+                ttlSeconds
+            );
+        }
+        return count;
+    }
+
+    async expire(
+        key: string,
+        ttlSeconds: number
+    ): Promise<void> {
+        await this.client.expire(
+            key, 
+            ttlSeconds
+        );
+    }
+
 
 
 
