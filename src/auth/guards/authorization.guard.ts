@@ -1,17 +1,17 @@
-import { BadRequestException, CanActivate, ExecutionContext, ForbiddenException, UnauthorizedException } from "@nestjs/common";
+import { BadRequestException, CanActivate, ExecutionContext, ForbiddenException, Injectable, UnauthorizedException } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
-import { Observable } from "rxjs";
 import { Permission } from "../enums/permissions.enum.js";
 import { AuthorizationService } from "../authorization/authorization.service.js";
 import { PERMISSION_KEY } from "../constants/permission-key.constant.js";
 
+@Injectable()
 export class AuthorizationGuard implements CanActivate {
     constructor(
         private readonly reflector: Reflector,
         private readonly authorizationService: AuthorizationService
     ) {}
 
-    canActivate(context: ExecutionContext): boolean | Promise<boolean> | Observable<boolean> {
+    async canActivate(context: ExecutionContext): Promise<boolean> {
         const permission = this.reflector.get<Permission>(
             PERMISSION_KEY,
             context.getHandler()
@@ -35,7 +35,7 @@ export class AuthorizationGuard implements CanActivate {
             throw new BadRequestException('Invalid organization');
         }
 
-        const hasPermission = this.authorizationService.hasPermission(
+        const hasPermission = await this.authorizationService.hasPermission(
             user.userId,
             organizationId,
             permission
