@@ -31,7 +31,7 @@ export class User {
 
     @OneToMany(
         () => EmailVerificationCode,
-        (emailVerificationCode) => emailVerificationCode.id
+        (emailVerificationCode) => emailVerificationCode.user
     )
     emailVerificationCodes: Relation<EmailVerificationCode[]>;
 
