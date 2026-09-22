@@ -153,33 +153,32 @@ export class TasksService {
             throw new NotFoundException(`Project with id ${projectId} not found`);
         }
 
-        let assignee : User | null = null;
+        let assignee: User | null = null;
 
         if (createTaskDto.assigneeId !== undefined) {
             assignee = await this.userRepository.findOneBy({
                 id: createTaskDto.assigneeId,
             });
-        }
 
-        if (!assignee) {
-            throw new NotFoundException(`User with id ${createTaskDto.assigneeId} not found`)
-        }
+            if (!assignee) {
+                throw new NotFoundException(`User with id ${createTaskDto.assigneeId} not found`);
+            }
 
-        const membership = await this.organizationMemberRepository.findOne({
-            where: {
-                user: {
-                    id: assignee.id
+            const membership = await this.organizationMemberRepository.findOne({
+                where: {
+                    user: {
+                        id: assignee.id
+                    },
+                    organization: {
+                        id: project.organization.id
+                    },
                 },
-                organization: {
-                    id: project.organization.id
-                },
-            },
-        });
+            });
 
-        if (!membership) {
-            throw new ForbiddenException(`User with id ${createTaskDto.assigneeId} is not a member of this organization`);
+            if (!membership) {
+                throw new ForbiddenException(`User with id ${createTaskDto.assigneeId} is not a member of this organization`);
+            }
         }
-
 
         const task = this.taskRespository.create({
             name: createTaskDto.name,
