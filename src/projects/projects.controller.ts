@@ -10,10 +10,16 @@ import { AuthorizationGuard } from '../auth/guards/authorization.guard.js';
 import { RequirePermission } from '../auth/decorators/require-permissions.decorator.js';
 import { Permission } from '../auth/enums/permissions.enum.js';
 import { CurrentUser } from '../auth/decorators/current-user.decorator.js';
+import { TasksService } from '../tasks/tasks.service.js';
+import { Task } from '../tasks/entities/task.entity.js';
+import { CreateTaskDto } from '../tasks/dto/create-task.dto.js';
 
 @Controller('projects')
 export class ProjectsController {
-  constructor(private readonly projectsService: ProjectsService) {}
+  constructor(
+    private readonly projectsService: ProjectsService,
+    private readonly tasksService: TasksService,
+  ) {}
 
 
   
@@ -23,6 +29,30 @@ export class ProjectsController {
   ): Promise<PaginatedResultDto<Project>> {
     return this.projectsService.getAllProjects(
       paginationQueryDto
+    );
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get(':id/tasks')
+  getTasksByProjectId(
+    @Param('id', ParseIntPipe) projectId: number,
+    @Query() paginationQueryDto: PaginationQueryDto
+  ): Promise<PaginatedResultDto<Task>> {
+    return this.tasksService.getTasksByProjectId(
+      projectId,
+      paginationQueryDto
+    );
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post(':id/tasks')
+  createTask(
+    @Param('id', ParseIntPipe) projectId: number,
+    @Body() createTaskDto: CreateTaskDto
+  ): Promise<Task> {
+    return this.tasksService.createTask(
+      projectId,
+      createTaskDto
     );
   }
 

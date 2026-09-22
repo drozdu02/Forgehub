@@ -10,9 +10,11 @@ import { ProjectAuthorizationService } from '../auth/authorization/project-autho
 import { OrganizationMember } from '../organizations/entities/organization-member.entity.js';
 import { ProjectPolicy } from './policies/project.policy.js';
 import { AuthorizationGuard } from '../auth/guards/authorization.guard.js';
+import { TasksModule } from '../tasks/tasks.module.js';
 @Module({
   imports: [
       TypeOrmModule.forFeature([Project, Organization, OrganizationMember]),
+      TasksModule,
     ],
   controllers: [ProjectsController],
   providers: [ProjectsService, OrganizationsService, AuthorizationService, ProjectAuthorizationService, ProjectPolicy, AuthorizationGuard],
