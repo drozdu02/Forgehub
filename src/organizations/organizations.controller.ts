@@ -11,6 +11,8 @@ import { RequirePermission } from '../auth/decorators/require-permissions.decora
 import { Permission } from '../auth/enums/permissions.enum.js';
 import { AuditService } from '../audit/audit.service.js';
 import { GetAuditLogsDto } from '../audit/dto/get-audit-logs.dto.js';
+import { PaginatedResultDto } from '../projects/dto/paginated-result.dto.js';
+import { PaginationQueryDto } from '../projects/dto/pagination-query.dto.js';
 
 @Controller('organizations')
 export class OrganizationsController {
@@ -47,6 +49,22 @@ export class OrganizationsController {
       user.userId,
       organizationId,
       createProjectDto
+    );
+  }
+
+  @UseGuards(
+    JwtAuthGuard,
+    AuthorizationGuard
+  )
+  @RequirePermission(Permission.PROJECT_READ)
+  @Get(':organizationId/projects')
+  getProjectsByOrganizationId(
+    @Param('organizationId', ParseIntPipe) organizationId: number,
+    @Query() paginationQueryDto: PaginationQueryDto
+  ): Promise<PaginatedResultDto<Project>> {
+    return this.projectsService.getProjectsByOrganizationId(
+      organizationId,
+      paginationQueryDto
     );
   }
 
