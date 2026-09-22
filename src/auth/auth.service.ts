@@ -66,7 +66,7 @@ export class AuthService {
         return this.jwtService.signAsync(payload);
     }
 
-    async creatEmailVerificationCode(
+    async createEmailVerificationCode(
         user: User
     ): Promise<void> {
         const code = this.generateOtp();
@@ -119,7 +119,7 @@ export class AuthService {
         });
         await this.userRepository.save(user);
 
-        await this.creatEmailVerificationCode(user);
+        await this.createEmailVerificationCode(user);
 
         return {
             id: user.id,
@@ -226,7 +226,7 @@ export class AuthService {
 
                 const newSession = manager.create(Session, {
                     familyId: session.familyId,
-                    userId: session.user.id,
+                    user: session.user,
                     refreshTokenHash: newRefreshTokenHash,
                     expiresAt: session.expiresAt,
                     revokedAt: null,
