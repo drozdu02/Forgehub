@@ -23,6 +23,7 @@ export class ProjectsController {
 
 
   
+  @UseGuards(JwtAuthGuard)
   @Get()
   getAllProjects(
     @Query() paginationQueryDto: PaginationQueryDto
