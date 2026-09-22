@@ -18,7 +18,7 @@ export class ProjectPolicy {
 
         const hasPermission = await this.authorizationService.hasPermission(
             userId,
-            project.id,
+            project.organization.id,
             permission
         );
 
