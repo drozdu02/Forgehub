@@ -173,7 +173,8 @@ export class AuthService {
 
         return {
             accessToken: accessToken,
-            refreshToken: refreshToken
+            refreshToken: refreshToken,
+            refreshTokenExpiresAt: session.expiresAt,
         };
     }
 
@@ -252,7 +253,8 @@ export class AuthService {
 
                 return {
                     accessToken: accessToken,
-                    refreshToken: newRefreshToken
+                    refreshToken: newRefreshToken,
+                    refreshTokenExpiresAt: newSession.expiresAt,
                 };
             },
         );
