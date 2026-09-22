@@ -195,7 +195,7 @@ export class ProjectsService {
     ): Promise<number> {
         const project = await this.projectRepository.findOne({
             where: {
-                id: userId,
+                id: projectId,
             },
             relations: {
                 organization: true
