@@ -10,6 +10,7 @@ import { JwtStrategy } from './strategies/jwt.strategy.js';
 import { Session } from './entities/session.entity.js';
 import { Project } from '../projects/entities/project.entity.js';
 import { EmailVerificationCode } from './entities/email-verification-code.entity.js';
+import { MailService } from '../mail/mail.service.js';
 @Module({
   imports: [
     ConfigModule,
@@ -31,6 +32,6 @@ import { EmailVerificationCode } from './entities/email-verification-code.entity
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, PasswordService, JwtStrategy],
+  providers: [AuthService, PasswordService, JwtStrategy, MailService],
 })
 export class AuthModule {}
