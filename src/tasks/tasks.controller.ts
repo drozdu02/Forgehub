@@ -22,7 +22,7 @@ export class TasksController {
   @UseGuards(JwtAuthGuard)
   @Get(':id')
   getTaskById(
-    @Param(':id', ParseIntPipe) taskId: number,
+    @Param('id', ParseIntPipe) taskId: number,
 
     @CurrentUser() user: {userId: number}
   ) {
@@ -34,7 +34,7 @@ export class TasksController {
 
   @Get('projects/:projectId/tasks')
   getTasksByProjectId(
-    @Param(':projectId', ParseIntPipe) projectId: number,
+    @Param('projectId', ParseIntPipe) projectId: number,
 
     @Query() paginationQueryDto: PaginationQueryDto
   ): Promise<PaginatedResultDto<Task>> {
@@ -47,7 +47,7 @@ export class TasksController {
   
   @Post(':id')
   createTask(
-    @Param(':id', ParseIntPipe) projectId: number,
+    @Param('id', ParseIntPipe) projectId: number,
     @Body() createTaskDto: CreateTaskDto
   ): Promise<Task> {
     return this.tasksService.createTask(
@@ -59,7 +59,7 @@ export class TasksController {
   @UseGuards(JwtAuthGuard)
   @Patch(':id')
   updateTask(
-    @Param(':id', ParseIntPipe) taskId: number,
+    @Param('id', ParseIntPipe) taskId: number,
 
     @Body() updateTaskDto: UpdateTaskDto,
 
@@ -75,7 +75,7 @@ export class TasksController {
   @UseGuards(JwtAuthGuard)
   @Delete(':id')
   deleteTask(
-    @Param(':id', ParseIntPipe) taskId: number,
+    @Param('id', ParseIntPipe) taskId: number,
 
     @CurrentUser() user: {userId: number},
   ): Promise<void> {
