@@ -1,4 +1,4 @@
-import { ConflictException, HttpException, HttpStatus, Injectable,  NotFoundException,  UnauthorizedException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, HttpException, HttpStatus, Injectable,  NotFoundException,  UnauthorizedException } from '@nestjs/common';
 import { PasswordService } from './password.service.js';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { User } from '../user/entities/user.entity.js';
@@ -149,7 +149,9 @@ export class AuthService {
             throw new UnauthorizedException(`Invalid email or password`);
         }
 
-        
+        if (!user.emailVerifiedAt) {
+            throw new ForbiddenException('Email is not verified');
+        }
 
         const refreshToken = this.generateRefreshToken();
         const refreshTokenHash = this.hashRefreshToken(refreshToken);
