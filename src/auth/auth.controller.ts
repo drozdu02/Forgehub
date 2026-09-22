@@ -10,12 +10,21 @@ import type { CookieOptions, Request, Response } from 'express';
 import { RefreshResultDto } from './dto/refresh-result.dto.js';
 import { LogoutResponseDto } from './dto/logout-response.dto.js';
 import { VerifyEmailDto } from './dto/verify-email.dto.js';
+import { REFRESH_TOKEN_TTL_MS } from './constants/refresh-token.constant.js';
 
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  
+  private getRefreshCookieOptions(): CookieOptions {
+    return {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/auth',
+      maxAge: REFRESH_TOKEN_TTL_MS,
+    };
+  }
 
   private getRefreshCookieClearOptions(): CookieOptions {
     return {
@@ -43,7 +52,7 @@ export class AuthController {
     response.cookie(
       'refresh_token',
       result.refreshToken,
-      this.getRefreshCookieClearOptions(),
+      this.getRefreshCookieOptions(),
     );
     return {
       accessToken: result.accessToken
@@ -66,7 +75,7 @@ export class AuthController {
     response.cookie(
       'refresh_token',
       result.refreshToken,
-      this.getRefreshCookieClearOptions(),
+      this.getRefreshCookieOptions(),
     );
 
     return {

@@ -18,6 +18,7 @@ import { VerifyEmailDto } from './dto/verify-email.dto.js';
 import { RedisService } from '../redis/redis.service.js';
 import { MailService } from '../mail/mail.service.js';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { REFRESH_TOKEN_TTL_MS } from './constants/refresh-token.constant.js';
 
 @Injectable()
 export class AuthService {
@@ -162,7 +163,7 @@ export class AuthService {
             familyId: randomUUID(),
             user,
             refreshTokenHash,
-            expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30),
+            expiresAt: new Date(Date.now() + REFRESH_TOKEN_TTL_MS),
             revokedAt: null,
             lastUsedAt: null,
             replacedBySessionId: null
