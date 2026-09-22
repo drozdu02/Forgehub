@@ -202,7 +202,7 @@ export class TasksService {
         await this.taskPolicy.can(
             userId,
             task,
-            Permission.TASK_READ
+            Permission.TASK_DELETE
         );
 
         await this.taskRespository.delete({
