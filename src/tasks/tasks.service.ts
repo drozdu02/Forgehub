@@ -265,8 +265,12 @@ export class TasksService {
             task.description = updateTaskDto.description;
         }
 
+        if (updateTaskDto.taskStatus !== undefined) {
+            task.taskStatus = updateTaskDto.taskStatus;
+        }
+
         if (updateTaskDto.taskPriority !== undefined) {
-            task.description = updateTaskDto.taskPriority;
+            task.taskPriority = updateTaskDto.taskPriority;
         }
 
         if (updateTaskDto.deadline !== undefined) {
