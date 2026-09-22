@@ -14,7 +14,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { MailModule } from './mail/mail.module.js';
 import { EventsModule } from './events/events.module.js';
 import { EventEmitterModule } from '@nestjs/event-emitter';
-import { AuditModule } from './audit/audit.module';
+import { AuditModule } from './audit/audit.module.js';
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
