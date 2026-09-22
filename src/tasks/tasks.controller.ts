@@ -14,9 +14,13 @@ export class TasksController {
 
   @Get()
   getAllTasks(
-    @Query() paginationQueryDto: PaginationQueryDto
+    @Query() paginationQueryDto: PaginationQueryDto,
+    @CurrentUser() user: {userId: number}
   ): Promise<PaginatedResultDto<Task>> {
-    return this.tasksService.getAllTasks(paginationQueryDto);
+    return this.tasksService.getAllTasks(
+      user.userId,
+      paginationQueryDto
+    );
   }
 
   @Get(':id')

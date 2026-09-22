@@ -26,9 +26,11 @@ export class ProjectsController {
   @UseGuards(JwtAuthGuard)
   @Get()
   getAllProjects(
-    @Query() paginationQueryDto: PaginationQueryDto
+    @Query() paginationQueryDto: PaginationQueryDto,
+    @CurrentUser() user: {userId: number}
   ): Promise<PaginatedResultDto<Project>> {
     return this.projectsService.getAllProjects(
+      user.userId,
       paginationQueryDto
     );
   }
@@ -37,9 +39,11 @@ export class ProjectsController {
   @Get(':id/tasks')
   getTasksByProjectId(
     @Param('id', ParseIntPipe) projectId: number,
-    @Query() paginationQueryDto: PaginationQueryDto
+    @Query() paginationQueryDto: PaginationQueryDto,
+    @CurrentUser() user: {userId: number}
   ): Promise<PaginatedResultDto<Task>> {
     return this.tasksService.getTasksByProjectId(
+      user.userId,
       projectId,
       paginationQueryDto
     );
@@ -49,9 +53,11 @@ export class ProjectsController {
   @Post(':id/tasks')
   createTask(
     @Param('id', ParseIntPipe) projectId: number,
-    @Body() createTaskDto: CreateTaskDto
+    @Body() createTaskDto: CreateTaskDto,
+    @CurrentUser() user: {userId: number}
   ): Promise<Task> {
     return this.tasksService.createTask(
+      user.userId,
       projectId,
       createTaskDto
     );
