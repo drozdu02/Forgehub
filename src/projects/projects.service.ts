@@ -14,6 +14,8 @@ import { ProjectPolicy } from './policies/project.policy.js';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ProjectCreatedEvent } from '../events/events/project/project-created.event.js';
 import { OrganizationMember } from '../organizations/entities/organization-member.entity.js';
+import { ProjectUpdatedEvent } from '../events/events/project/project-updated.event.js';
+import { ProjectDeletedEvent } from '../events/events/project/project-deleted.event.js';
 
 @Injectable()
 export class ProjectsService {
@@ -195,6 +197,7 @@ export class ProjectsService {
             projectId
         );
 
+
         await this.projectPolicy.can(
             userId,
             project,
@@ -202,6 +205,16 @@ export class ProjectsService {
         );
         
         await this.projectRepository.delete(projectId);
+
+        this.eventEmitter.emit(
+            'project.deleted',
+            new ProjectDeletedEvent(
+                project.id,
+                project.organization.id,
+                userId,
+                new Date(),
+            )
+        )
     }
 
     async updateProject(
@@ -234,7 +247,21 @@ export class ProjectsService {
             project.organization = organization;
         }
 
-        return this.projectRepository.save(project);
+        const updatedProject = await this.projectRepository.save(project);
+
+        this.eventEmitter.emit(
+            'project.updated',
+            new ProjectUpdatedEvent(
+                updatedProject.id,
+                updatedProject.organization.id,
+                userId,
+                new Date()
+            ),
+        );
+
+        return updatedProject;
+
+
     }
 
     async canUserAccessProject(
