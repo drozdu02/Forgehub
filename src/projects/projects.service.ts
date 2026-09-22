@@ -12,7 +12,7 @@ import { AuthorizationService } from '../auth/authorization/authorization.servic
 import { Permission } from '../auth/enums/permissions.enum.js';
 import { ProjectPolicy } from './policies/project.policy.js';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { ProjectCreatedEvent } from '../events/events/project-created.event.js';
+import { ProjectCreatedEvent } from '../events/events/project/project-created.event.js';
 import { OrganizationMember } from '../organizations/entities/organization-member.entity.js';
 
 @Injectable()
@@ -177,6 +177,7 @@ export class ProjectsService {
                 project.id,
                 organization.id,
                 userId,
+                new Date(),
             ),
         );
 

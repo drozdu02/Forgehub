@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { AuditService } from "../audit.service.js";
 import { OnEvent } from "@nestjs/event-emitter";
-import { ProjectCreatedEvent } from "../../events/events/project-created.event.js";
+import { ProjectCreatedEvent } from "../../events/events/project/project-created.event.js";
 import { AuditAction } from "../enums/audit-action.enum.js";
 import { AuditEntityType } from "../enums/audit-entity-type.enum.js";
 
