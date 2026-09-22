@@ -39,7 +39,7 @@ export class User {
         () => AuditLog,
         (auditLog) => auditLog.actor
     )
-    user: Relation<User>
+    auditLogs: Relation<AuditLog[]>;
 
     @Column({ name: 'password_hash' })
     passwordHash: string;
