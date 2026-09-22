@@ -13,5 +13,6 @@ import { ProjectCreatedAuditListener } from './listeners/project-created-audit.l
   ],
   controllers: [AuditController],
   providers: [AuditService, ProjectCreatedAuditListener],
+  exports: [AuditService],
 })
 export class AuditModule {}
