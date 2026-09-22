@@ -8,7 +8,6 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard.js';
 import { CurrentUser } from './decorators/current-user.decorator.js';
 import type { CookieOptions, Request, Response } from 'express';
 import { RefreshResultDto } from './dto/refresh-result.dto.js';
-import { ref } from 'process';
 import { LogoutResponseDto } from './dto/logout-response.dto.js';
 import { VerifyEmailDto } from './dto/verify-email.dto.js';
 
@@ -16,7 +15,17 @@ import { VerifyEmailDto } from './dto/verify-email.dto.js';
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  
+  private getRefreshCookieOptions(
+    expiresAt: Date
+  ): CookieOptions {
+    return {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/auth',
+      expires: expiresAt,
+    };
+  }
 
   private getRefreshCookieClearOptions(): CookieOptions {
     return {
@@ -44,10 +53,11 @@ export class AuthController {
     response.cookie(
       'refresh_token',
       result.refreshToken,
-      this.getRefreshCookieClearOptions(),
+      this.getRefreshCookieOptions(result.refreshTokenExpiresAt),
     );
     return {
-      accessToken: result.accessToken
+      accessToken: result.accessToken,
+      refreshTokenExpiresAt: result.refreshTokenExpiresAt,
     }
   }
 
@@ -67,15 +77,15 @@ export class AuthController {
     response.cookie(
       'refresh_token',
       result.refreshToken,
-      this.getRefreshCookieClearOptions(),
+      this.getRefreshCookieOptions(result.refreshTokenExpiresAt),
     );
 
     return {
-      accessToken: result.accessToken
+      accessToken: result.accessToken,
+      refreshTokenExpiresAt: result.refreshTokenExpiresAt,
     }
   }
 
-  @UseGuards(JwtAuthGuard)
   @Post('logout')
   async logout(
     @Req() request: Request,

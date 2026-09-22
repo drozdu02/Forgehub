@@ -8,13 +8,16 @@ import { ProjectsService } from '../projects/projects.service.js';
 import { Project } from '../projects/entities/project.entity.js';
 import { AuthorizationService } from '../auth/authorization/authorization.service.js';
 import { ProjectPolicy } from '../projects/policies/project.policy.js';
+import { AuthorizationGuard } from '../auth/guards/authorization.guard.js';
+import { AuditModule } from '../audit/audit.module.js';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Organization, OrganizationMember, Project])
+    TypeOrmModule.forFeature([Organization, OrganizationMember, Project]),
+    AuditModule,
   ],
   controllers: [OrganizationsController],
-  providers: [OrganizationsService, ProjectsService, AuthorizationService, ProjectPolicy],
+  providers: [OrganizationsService, ProjectsService, AuthorizationService, ProjectPolicy, AuthorizationGuard],
   exports: [OrganizationsService]
 })
 export class OrganizationsModule {}

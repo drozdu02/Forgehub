@@ -1,6 +1,6 @@
-import { ForbiddenException, Injectable, NotFoundException, UseGuards } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { Project } from './entities/project.entity.js';
 import { PaginationQueryDto } from './dto/pagination-query.dto.js';
 import { PaginatedResultDto } from './dto/paginated-result.dto.js';
@@ -13,6 +13,7 @@ import { Permission } from '../auth/enums/permissions.enum.js';
 import { ProjectPolicy } from './policies/project.policy.js';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ProjectCreatedEvent } from '../events/events/project-created.event.js';
+import { OrganizationMember } from '../organizations/entities/organization-member.entity.js';
 
 @Injectable()
 export class ProjectsService {
@@ -21,6 +22,8 @@ export class ProjectsService {
         private readonly projectRepository: Repository<Project>,
         @InjectRepository(Organization)
         private readonly organizationRepository: Repository<Organization>,
+        @InjectRepository(OrganizationMember)
+        private readonly organizationMemberRepository: Repository<OrganizationMember>,
 
         private readonly authorizationService: AuthorizationService,
         private readonly projectPolicy: ProjectPolicy,
@@ -46,14 +49,45 @@ export class ProjectsService {
     }
 
     async getAllProjects(
+        userId: number,
         paginationQueryDto: PaginationQueryDto
     ): Promise<PaginatedResultDto<Project>> {
-        const { page, limit } = paginationQueryDto;
+        const page = paginationQueryDto.page ?? 1;
+        const limit = paginationQueryDto.limit ?? 10;
+
+        const memberships = await this.organizationMemberRepository.find({
+            where: {
+                user: {
+                    id: userId
+                },
+            },
+            relations: {
+                organization: true
+            },
+        });
+
+        const organizationIds = memberships.map((membership) => membership.organization.id);
+
+        if (organizationIds.length === 0) {
+            return {
+                data: [],
+                meta: {
+                    total: 0,
+                    page,
+                    limit,
+                    totalPages: 0,
+                }
+            };
+        }
 
         const [data, total] = await this.projectRepository.findAndCount({
+            where: {
+                organization: {
+                    id: In(organizationIds)
+                },
+            },
             skip: (page - 1) * limit,
             take: limit,
-
         });
         return {
             data,
@@ -184,7 +218,20 @@ export class ProjectsService {
             Permission.PROJECT_UPDATE
         );
 
-        Object.assign(project, updateProjectDto);
+        const { organizationId, ...projectFields } = updateProjectDto;
+        Object.assign(project, projectFields);
+
+        if (organizationId !== undefined) {
+            const organization = await this.organizationRepository.findOneBy({
+                id: organizationId,
+            });
+
+            if (!organization) {
+                throw new NotFoundException(`Organization with id ${organizationId} not found`);
+            }
+
+            project.organization = organization;
+        }
 
         return this.projectRepository.save(project);
     }
@@ -195,7 +242,7 @@ export class ProjectsService {
     ): Promise<number> {
         const project = await this.projectRepository.findOne({
             where: {
-                id: userId,
+                id: projectId,
             },
             relations: {
                 organization: true

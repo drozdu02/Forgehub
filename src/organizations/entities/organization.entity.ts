@@ -40,6 +40,6 @@ export class Organization {
         () => AuditLog,
         (auditLog) => auditLog.organization
     )
-    auditLog: Relation<AuditLog>
+    auditLogs: Relation<AuditLog[]>;
 
 }

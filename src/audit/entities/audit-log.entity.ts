@@ -12,6 +12,7 @@ export class AuditLog {
 
     @ManyToOne(
         () => Organization,
+        (organization) => organization.auditLogs,
         {
             onDelete: 'CASCADE'
         },
@@ -20,6 +21,7 @@ export class AuditLog {
 
     @ManyToOne(
         () => User,
+        (user) => user.auditLogs,
         {
             nullable: true,
             onDelete: 'SET NULL'

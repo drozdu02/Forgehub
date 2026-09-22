@@ -1,4 +1,4 @@
-import { ConflictException, HttpException, HttpStatus, Injectable,  NotFoundException,  UnauthorizedException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, HttpException, HttpStatus, Injectable,  NotFoundException,  UnauthorizedException } from '@nestjs/common';
 import { PasswordService } from './password.service.js';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { User } from '../user/entities/user.entity.js';
@@ -18,6 +18,7 @@ import { VerifyEmailDto } from './dto/verify-email.dto.js';
 import { RedisService } from '../redis/redis.service.js';
 import { MailService } from '../mail/mail.service.js';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { REFRESH_TOKEN_TTL_MS } from './constants/refresh-token.constant.js';
 
 @Injectable()
 export class AuthService {
@@ -47,7 +48,7 @@ export class AuthService {
     }
 
     private hashRefreshToken(refreshToken: string): string {
-        return createHash('sha-256')
+        return createHash('sha256')
             .update(refreshToken)
             .digest('hex');
     }
@@ -66,7 +67,7 @@ export class AuthService {
         return this.jwtService.signAsync(payload);
     }
 
-    async creatEmailVerificationCode(
+    async createEmailVerificationCode(
         user: User
     ): Promise<void> {
         const code = this.generateOtp();
@@ -119,6 +120,8 @@ export class AuthService {
         });
         await this.userRepository.save(user);
 
+        await this.createEmailVerificationCode(user);
+
         return {
             id: user.id,
             name: user.name,
@@ -147,7 +150,9 @@ export class AuthService {
             throw new UnauthorizedException(`Invalid email or password`);
         }
 
-        
+        if (!user.emailVerifiedAt) {
+            throw new ForbiddenException('Email is not verified');
+        }
 
         const refreshToken = this.generateRefreshToken();
         const refreshTokenHash = this.hashRefreshToken(refreshToken);
@@ -158,7 +163,7 @@ export class AuthService {
             familyId: randomUUID(),
             user,
             refreshTokenHash,
-            expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30),
+            expiresAt: new Date(Date.now() + REFRESH_TOKEN_TTL_MS),
             revokedAt: null,
             lastUsedAt: null,
             replacedBySessionId: null
@@ -168,7 +173,8 @@ export class AuthService {
 
         return {
             accessToken: accessToken,
-            refreshToken: refreshToken
+            refreshToken: refreshToken,
+            refreshTokenExpiresAt: session.expiresAt,
         };
     }
 
@@ -224,7 +230,7 @@ export class AuthService {
 
                 const newSession = manager.create(Session, {
                     familyId: session.familyId,
-                    userId: session.user.id,
+                    user: session.user,
                     refreshTokenHash: newRefreshTokenHash,
                     expiresAt: session.expiresAt,
                     revokedAt: null,
@@ -247,7 +253,8 @@ export class AuthService {
 
                 return {
                     accessToken: accessToken,
-                    refreshToken: newRefreshToken
+                    refreshToken: newRefreshToken,
+                    refreshTokenExpiresAt: newSession.expiresAt,
                 };
             },
         );
@@ -341,7 +348,7 @@ export class AuthService {
                 }
 
                 
-                const isValid = this.passwordService.verify(
+                const isValid = await this.passwordService.verify(
                     verificationCode.codeHash,
                     verifyEmailDto.code
                 );
@@ -351,7 +358,7 @@ export class AuthService {
                 }
 
                 verificationCode.usedAt = new Date();
-                manager.save(EmailVerificationCode, verificationCode);
+                await manager.save(EmailVerificationCode, verificationCode);
 
                 user.emailVerifiedAt = new Date();
 

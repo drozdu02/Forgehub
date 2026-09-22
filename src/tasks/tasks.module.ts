@@ -14,5 +14,6 @@ import { AuthorizationService } from '../auth/authorization/authorization.servic
     ],
   controllers: [TasksController],
   providers: [TasksService, TaskPolicy, AuthorizationService],
+  exports: [TasksService],
 })
 export class TasksModule {}
