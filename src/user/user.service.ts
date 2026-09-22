@@ -4,12 +4,14 @@ import { User } from './entities/user.entity.js';
 import { Repository } from 'typeorm';
 import { UpdateUserDto } from './dto/update-user.dto.js';
 import { UserResponseDto } from './dto/user-response.dto.js';
+import { AuthService } from '../auth/auth.service.js';
 
 @Injectable()
 export class UserService {
     constructor(
         @InjectRepository(User)
-        private readonly userRepository: Repository<User>
+        private readonly userRepository: Repository<User>,
+        private readonly authService: AuthService,
     ){}
 
     private toResponse(user: User): UserResponseDto {
@@ -93,6 +95,9 @@ export class UserService {
         if (!existingUser) {
             throw new NotFoundException(`User with id ${id} not found`);
         }
+
+        let emailChanged = false;
+
         if (updateUserDto.email && updateUserDto.email !== existingUser.email) {
             const emailExists = await this.userRepository.findOneBy({
                 email: updateUserDto.email
@@ -101,11 +106,18 @@ export class UserService {
                 throw new ConflictException(`User with email ${updateUserDto.email} already exists`);
             }
             existingUser.email = updateUserDto.email;
+            existingUser.emailVerifiedAt = null;
+            emailChanged = true;
         }
         if (updateUserDto.name) {
             existingUser.name = updateUserDto.name;
         }
         const savedUser = await this.userRepository.save(existingUser);
+
+        if (emailChanged) {
+            await this.authService.createEmailVerificationCode(savedUser);
+        }
+
         return this.toResponse(savedUser);
     }
 }
