@@ -20,7 +20,7 @@ export class ProjectCreatedAuditListener {
             actorUserId: event.actorUserId,
             action: AuditAction.PROJECT_CREATED,
             entityType: AuditEntityType.PROJECT,
-            entityId: event.projectId
+            entityId: event.projectId.toString()
         });
     }
 }
