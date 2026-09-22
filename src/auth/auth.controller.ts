@@ -8,7 +8,6 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard.js';
 import { CurrentUser } from './decorators/current-user.decorator.js';
 import type { CookieOptions, Request, Response } from 'express';
 import { RefreshResultDto } from './dto/refresh-result.dto.js';
-import { ref } from 'process';
 import { LogoutResponseDto } from './dto/logout-response.dto.js';
 import { VerifyEmailDto } from './dto/verify-email.dto.js';
 
