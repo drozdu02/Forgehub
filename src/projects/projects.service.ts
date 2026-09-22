@@ -184,7 +184,20 @@ export class ProjectsService {
             Permission.PROJECT_UPDATE
         );
 
-        Object.assign(project, updateProjectDto);
+        const { organizationId, ...projectFields } = updateProjectDto;
+        Object.assign(project, projectFields);
+
+        if (organizationId !== undefined) {
+            const organization = await this.organizationRepository.findOneBy({
+                id: organizationId,
+            });
+
+            if (!organization) {
+                throw new NotFoundException(`Organization with id ${organizationId} not found`);
+            }
+
+            project.organization = organization;
+        }
 
         return this.projectRepository.save(project);
     }
