@@ -10,10 +10,11 @@ import { JwtStrategy } from './strategies/jwt.strategy.js';
 import { Session } from './entities/session.entity.js';
 import { Project } from '../projects/entities/project.entity.js';
 import { EmailVerificationCode } from './entities/email-verification-code.entity.js';
-import { MailService } from '../mail/mail.service.js';
+import { MailModule } from '../mail/mail.module.js';
 @Module({
   imports: [
     ConfigModule,
+    MailModule,
     TypeOrmModule.forFeature([User, Session, Project, EmailVerificationCode]),
     JwtModule.registerAsync({
       inject: [ConfigService],
@@ -32,6 +33,6 @@ import { MailService } from '../mail/mail.service.js';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, PasswordService, JwtStrategy, MailService],
+  providers: [AuthService, PasswordService, JwtStrategy],
 })
 export class AuthModule {}

@@ -119,6 +119,8 @@ export class AuthService {
         });
         await this.userRepository.save(user);
 
+        await this.creatEmailVerificationCode(user);
+
         return {
             id: user.id,
             name: user.name,
