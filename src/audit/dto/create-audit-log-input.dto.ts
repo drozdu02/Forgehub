@@ -19,8 +19,7 @@ export class CreateAuditLogInputDto {
     entityType: AuditEntityType;
 
     @IsNotEmpty()
-    @IsInt()
-    entityId: number;
+    entityId: string;
 
     @IsOptional()
     metadata?: Record<string, unknown>;

@@ -33,8 +33,8 @@ export class AuditLog {
     @Column({ type: 'enum', enum: AuditEntityType })
     entityType: AuditEntityType;
 
-    @Column({ type: 'int' })
-    entityId: number;
+    @Column({ length: 100 })
+    entityId: string;
 
     @Column({ type: 'jsonb', nullable: true })
     metadata: Record<string, unknown> | null;

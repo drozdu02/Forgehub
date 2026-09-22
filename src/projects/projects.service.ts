@@ -11,6 +11,8 @@ import { ProjectAuthorizationContext } from './interfaces/project-authorization-
 import { AuthorizationService } from '../auth/authorization/authorization.service.js';
 import { Permission } from '../auth/enums/permissions.enum.js';
 import { ProjectPolicy } from './policies/project.policy.js';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { ProjectCreatedEvent } from '../events/events/project-created.event.js';
 
 @Injectable()
 export class ProjectsService {
@@ -22,6 +24,7 @@ export class ProjectsService {
 
         private readonly authorizationService: AuthorizationService,
         private readonly projectPolicy: ProjectPolicy,
+        private readonly eventEmitter: EventEmitter2
     ){}
 
     private async getProjectForAuthorization(
@@ -117,6 +120,7 @@ export class ProjectsService {
     }
 
     async createProject(
+        userId: number,
         organizationId: number,
         createProjectDto: CreateProjectDto
     ): Promise<Project> {
@@ -131,7 +135,21 @@ export class ProjectsService {
             ...createProjectDto,
             organization
         });
-        return this.projectRepository.save(project);
+        await this.projectRepository.save(project);
+
+        this.eventEmitter.emit(
+            'project.created',
+            new ProjectCreatedEvent(
+                project.id,
+                organization.id,
+                userId,
+            ),
+        );
+
+        return project;
+
+
+
     }
 
     async deleteProject(
