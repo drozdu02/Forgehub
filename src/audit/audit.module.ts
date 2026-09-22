@@ -4,6 +4,8 @@ import { AuditController } from './audit.controller.js';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuditLog } from './entities/audit-log.entity.js';
 import { ProjectCreatedAuditListener } from './listeners/project-created-audit.listener.js';
+import { ProjectUpdatedAuditListener } from './listeners/project-updated-audit.listener.js';
+import { ProjectDeletedAuditListener } from './listeners/project-deleted-audit.listener.js';
 
 @Module({
   imports: [
@@ -12,7 +14,7 @@ import { ProjectCreatedAuditListener } from './listeners/project-created-audit.l
     ]),
   ],
   controllers: [AuditController],
-  providers: [AuditService, ProjectCreatedAuditListener],
+  providers: [AuditService, ProjectCreatedAuditListener, ProjectUpdatedAuditListener, ProjectDeletedAuditListener],
   exports: [AuditService],
 })
 export class AuditModule {}
