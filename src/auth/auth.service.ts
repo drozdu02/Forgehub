@@ -341,7 +341,7 @@ export class AuthService {
                 }
 
                 
-                const isValid = this.passwordService.verify(
+                const isValid = await this.passwordService.verify(
                     verificationCode.codeHash,
                     verifyEmailDto.code
                 );
@@ -351,7 +351,7 @@ export class AuthService {
                 }
 
                 verificationCode.usedAt = new Date();
-                manager.save(EmailVerificationCode, verificationCode);
+                await manager.save(EmailVerificationCode, verificationCode);
 
                 user.emailVerifiedAt = new Date();
 
