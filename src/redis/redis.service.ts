@@ -47,6 +47,8 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
             );
             return;
         }
+
+        await this.client.set(key, value);
     }
 
     async setIfNotExists(
