@@ -47,7 +47,7 @@ export class AuthService {
     }
 
     private hashRefreshToken(refreshToken: string): string {
-        return createHash('sha-256')
+        return createHash('sha256')
             .update(refreshToken)
             .digest('hex');
     }
