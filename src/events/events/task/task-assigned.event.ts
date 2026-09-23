@@ -1,4 +1,4 @@
-export class TaskDeletedEvent {
+export class TaskAssignedEvent {
     constructor(
         public readonly taskId: number,
         public readonly projectId: number,

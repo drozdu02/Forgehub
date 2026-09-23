@@ -1,3 +1,5 @@
+import { TaskPriority } from "../../../tasks/enums/task-priority.enum.js";
+
 export interface TaskChanges {
     name?: {
         oldValue: string;

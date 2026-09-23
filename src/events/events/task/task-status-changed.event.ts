@@ -1,6 +1,6 @@
 import { TaskStatus } from "../../../tasks/enums/task-status.enum.js";
 
-export class TaskUpdatedEvent {
+export class TaskStatusChangedEvent {
     constructor(
         public readonly taskId: number,
         public readonly projectId: number,

@@ -22,6 +22,7 @@ export class TaskPolicy {
         );
     }
 
+
     async canOnProject(
         userId: number,
         project: Project,
