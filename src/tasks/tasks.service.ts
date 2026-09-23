@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { In, Repository } from 'typeorm';
 import { Task } from './entities/task.entity.js';
 import { CreateTaskDto } from './dto/create-task.dto.js';
@@ -11,6 +11,11 @@ import { User } from '../user/entities/user.entity.js';
 import { OrganizationMember } from '../organizations/entities/organization-member.entity.js';
 import { TaskPolicy } from './policies/task.policy.js';
 import { Permission } from '../auth/enums/permissions.enum.js';
+import { TaskChanges } from '../events/events/interfaces/task-changes.interface.js';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { TaskUpdatedEvent } from '../events/events/task/task-updated.event.js';
+import { TaskStatusChangedEvent } from '../events/events/task/task-status-changed.event.js';
+import { TaskAssignedEvent } from '../events/events/task/task-assigned.event.js';
 @Injectable()
 export class TasksService {
     constructor(
@@ -26,7 +31,8 @@ export class TasksService {
         @InjectRepository(OrganizationMember)
         private readonly organizationMemberRepository: Repository<OrganizationMember>,
 
-        private readonly taskPolicy: TaskPolicy
+        private readonly taskPolicy: TaskPolicy,
+        private readonly eventEmitter: EventEmitter2,
     ){}
 
     private async getUserOrganizationIds(
@@ -291,56 +297,156 @@ export class TasksService {
             Permission.TASK_UPDATE
         );
 
-        if (updateTaskDto.assigneeId !== undefined) {
-            if (updateTaskDto.assigneeId === null) {
-                task.assignee = null;
-            } else {
-                const assignee = await this.userRepository.findOneBy({
-                    id: updateTaskDto.assigneeId
+        const oldStatus = task.taskStatus;
+        const oldAssigneeId = task.assignee?.id ?? null;
+        const oldDeadline = task.deadline;
+        const changes : TaskChanges = {};
+
+        if (updateTaskDto.name !== undefined && updateTaskDto.name !== task.name) {
+            changes.name = {
+                oldValue: task.name,
+                newValue: updateTaskDto.name
+            };
+            task.name = updateTaskDto.name;
+        }
+
+        if (updateTaskDto.description !== undefined && updateTaskDto.description !== task.description) {
+            changes.description = {
+                oldValue: task.description,
+                newValue: updateTaskDto.description
+            };
+            task.description = updateTaskDto.description;
+        }
+
+        if (updateTaskDto.taskPriority !== undefined && updateTaskDto.taskPriority !== task.taskPriority) {
+            changes.priority = {
+                oldValue: task.taskPriority,
+                newValue: updateTaskDto.taskPriority
+            };
+            task.taskPriority = updateTaskDto.taskPriority;
+        }
+
+        if (updateTaskDto.deadline !== undefined) {
+            const newDeadline = updateTaskDto.deadline === null
+                ? null
+                : new Date(updateTaskDto.deadline);
+
+            const sameDeadline =
+                (oldDeadline === null && newDeadline === null) ||
+                (oldDeadline !== null &&
+                    newDeadline !== null &&
+                    oldDeadline.getTime() === newDeadline.getTime());
+
+            if (!sameDeadline) {
+                changes.deadline = {
+                    oldValue: oldDeadline,
+                    newValue: newDeadline
+                };
+                task.deadline = newDeadline;
+            }
+        }
+
+        let statusChanged = false;
+        const newStatus = updateTaskDto.taskStatus;
+        if (newStatus !== undefined && newStatus !== oldStatus) {
+            task.taskStatus = newStatus;
+            statusChanged = true;
+        }
+
+        let assigneeChanged = false;
+        let newAssigneeId: number | null = oldAssigneeId;
+
+        if (updateTaskDto.assigneeId !== undefined && updateTaskDto.assigneeId !== oldAssigneeId) {
+            let newAssignee: User | null = null;
+
+            if (updateTaskDto.assigneeId !== null) {
+                newAssignee = await this.userRepository.findOne({
+                    where: {
+                        id: updateTaskDto.assigneeId
+                    },
                 });
 
-                if (!assignee) {
+                if (!newAssignee) {
                     throw new NotFoundException(`User with id ${updateTaskDto.assigneeId} not found`);
                 }
 
                 const membership = await this.organizationMemberRepository.findOne({
                     where: {
                         user: {
-                            id: assignee.id
+                            id: newAssignee.id
                         },
                         organization: {
-                            id: task.project.organization.id,
+                            id: task.project.organization.id
                         },
                     },
                 });
-                
+
                 if (!membership) {
-                    throw new NotFoundException(`User with id ${assignee.id} is not a member of this organization`);
+                    throw new BadRequestException('Assignee must belong to the project');
                 }
-                task.assignee = assignee;
             }
+
+            task.assignee = newAssignee;
+            newAssigneeId = newAssignee?.id ?? null;
+            assigneeChanged = true;
         }
 
-        if (updateTaskDto.name !== undefined) {
-            task.name = updateTaskDto.name;
+        const hasChanges = Object.keys(changes).length > 0 || statusChanged || assigneeChanged;
+
+        if (!hasChanges) {
+            return task;
         }
 
-        if (updateTaskDto.description !== undefined) {
-            task.description = updateTaskDto.description;
+        const updatedTask = await this.taskRespository.save(task);
+
+        const occuredAt = new Date();
+
+        if (Object.keys(changes).length > 0) {
+            this.eventEmitter.emit(
+                'task.updated',
+                new TaskUpdatedEvent(
+                    updatedTask.id,
+                    updatedTask.project.id,
+                    updatedTask.project.organization.id,
+                    userId,
+                    changes,
+                    occuredAt
+                ),
+            );
         }
 
-        if (updateTaskDto.taskStatus !== undefined) {
-            task.taskStatus = updateTaskDto.taskStatus;
+        if (statusChanged) {
+            this.eventEmitter.emit(
+                'task.status-changed',
+                new TaskStatusChangedEvent(
+                    updatedTask.id,
+                    updatedTask.project.id,
+                    task.project.organization.id,
+                    userId,
+                    oldStatus,
+                    updatedTask.taskStatus,
+                    occuredAt
+                ),
+            );
         }
 
-        if (updateTaskDto.taskPriority !== undefined) {
-            task.taskPriority = updateTaskDto.taskPriority;
+        if (assigneeChanged) {
+            this.eventEmitter.emit(
+                'task.assignee-changed',
+                new TaskAssignedEvent(
+                    updatedTask.id,
+                    updatedTask.project.id,
+                    task.project.organization.id,
+                    userId,
+                    oldAssigneeId,
+                    newAssigneeId,
+                    occuredAt,
+                ),
+            );
         }
 
-        if (updateTaskDto.deadline !== undefined) {
-            task.deadline = updateTaskDto.deadline ? new Date(updateTaskDto.deadline) : null;
-        }
-        return this.taskRespository.save(task);
+        return updatedTask;
+
     }
 
     
