@@ -1,11 +1,11 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { In, Repository } from 'typeorm';
+import { DataSource, In, Repository } from 'typeorm';
 import { Task } from './entities/task.entity.js';
 import { CreateTaskDto } from './dto/create-task.dto.js';
 import { UpdateTaskDto } from './dto/update-task.dto.js';
 import { PaginationQueryDto } from './dto/pagination-query.dto.js';
 import { PaginatedResultDto } from './dto/paginated-result.dto.js';
-import { InjectRepository } from '@nestjs/typeorm';
+import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { Project } from '../projects/entities/project.entity.js';
 import { User } from '../user/entities/user.entity.js';
 import { OrganizationMember } from '../organizations/entities/organization-member.entity.js';
@@ -16,6 +16,8 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { TaskUpdatedEvent } from '../events/events/task/task-updated.event.js';
 import { TaskStatusChangedEvent } from '../events/events/task/task-status-changed.event.js';
 import { TaskAssignedEvent } from '../events/events/task/task-assigned.event.js';
+import { TaskPriority } from './enums/task-priority.enum.js';
+import OutboxService from '../infrastructure/outbox/outbox.service.js';
 @Injectable()
 export class TasksService {
     constructor(
@@ -31,8 +33,12 @@ export class TasksService {
         @InjectRepository(OrganizationMember)
         private readonly organizationMemberRepository: Repository<OrganizationMember>,
 
+        @InjectDataSource()
+        private readonly dataSource: DataSource,
+
         private readonly taskPolicy: TaskPolicy,
         private readonly eventEmitter: EventEmitter2,
+        private readonly outboxService: OutboxService,
     ){}
 
     private async getUserOrganizationIds(
@@ -224,42 +230,37 @@ export class TasksService {
             Permission.TASK_CREATE
         );
 
-        let assignee: User | null = null;
+        const occuredAt = new Date();
 
-        if (createTaskDto.assigneeId !== undefined) {
-            assignee = await this.userRepository.findOneBy({
-                id: createTaskDto.assigneeId,
-            });
+        return this.dataSource.transaction(
+            async manager => {
+                const task = manager.getRepository(Task).create({
+                    name: createTaskDto.name,
+                    description: createTaskDto.description ?? null,
+                    taskPriority: createTaskDto.taskPriority ?? TaskPriority.MEDIUM,
+                    deadline: createTaskDto.deadline ? new Date(createTaskDto.deadline) : null,
+                    project,
+                    assignee: null,
+                });
 
-            if (!assignee) {
-                throw new NotFoundException(`User with id ${createTaskDto.assigneeId} not found`);
-            }
+                const savedTask = await manager.getRepository(Task).save(task);
 
-            const membership = await this.organizationMemberRepository.findOne({
-                where: {
-                    user: {
-                        id: assignee.id
+                await this.outboxService.create(
+                    {
+                        type: 'task.created',
+                        payload: {
+                            taskId: savedTask.id,
+                            projectId: project.id,
+                            organizationId: project.organization.id,
+                            actorUserId: userId
+                        },
+                        occuredAt,
                     },
-                    organization: {
-                        id: project.organization.id
-                    },
-                },
-            });
-
-            if (!membership) {
-                throw new ForbiddenException(`User with id ${createTaskDto.assigneeId} is not a member of this organization`);
+                    manager
+                );
+                return savedTask;
             }
-        }
-
-        const task = this.taskRespository.create({
-            name: createTaskDto.name,
-            description: createTaskDto.description,
-            taskPriority: createTaskDto.taskPriority,
-            deadline: createTaskDto.deadline ? new Date(createTaskDto.deadline) : null,
-            project: project,
-            assignee: assignee
-        });
-        return this.taskRespository.save(task);
+        )
     }
 
     async deleteTaskById(
