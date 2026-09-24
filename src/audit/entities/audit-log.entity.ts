@@ -1,4 +1,4 @@
-import { Column, CreateDateColumn, Entity, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
+import { Column, CreateDateColumn, Entity, Index, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
 import type { Relation } from 'typeorm';
 import { Organization } from "../../organizations/entities/organization.entity.js";
 import { User } from "../../user/entities/user.entity.js";
@@ -37,6 +37,10 @@ export class AuditLog {
 
     @Column({ length: 100 })
     entityId: string;
+
+    @Index({ unique: true })
+    @Column({ type: 'uuid', nullable: true})
+    eventId: string | null;
 
     @Column({ type: 'jsonb', nullable: true })
     metadata: Record<string, unknown> | null;
