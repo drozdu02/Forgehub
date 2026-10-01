@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
+import { DataSource, In, Repository } from 'typeorm';
 import { Project } from './entities/project.entity.js';
 import { PaginationQueryDto } from './dto/pagination-query.dto.js';
 import { PaginatedResultDto } from './dto/paginated-result.dto.js';
@@ -16,6 +16,7 @@ import { ProjectCreatedEvent } from '../events/events/project/project-created.ev
 import { OrganizationMember } from '../organizations/entities/organization-member.entity.js';
 import { ProjectUpdatedEvent } from '../events/events/project/project-updated.event.js';
 import { ProjectDeletedEvent } from '../events/events/project/project-deleted.event.js';
+import OutboxService from '../infrastructure/outbox/outbox.service.js';
 
 @Injectable()
 export class ProjectsService {
@@ -27,9 +28,13 @@ export class ProjectsService {
         @InjectRepository(OrganizationMember)
         private readonly organizationMemberRepository: Repository<OrganizationMember>,
 
+        @InjectDataSource()
+        private readonly dataSource: DataSource,
+
         private readonly authorizationService: AuthorizationService,
         private readonly projectPolicy: ProjectPolicy,
-        private readonly eventEmitter: EventEmitter2
+        private readonly eventEmitter: EventEmitter2,
+        private readonly outboxService: OutboxService
     ){}
 
     private async getProjectForAuthorization(

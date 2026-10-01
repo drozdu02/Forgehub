@@ -11,10 +11,12 @@ import { Session } from './entities/session.entity.js';
 import { Project } from '../projects/entities/project.entity.js';
 import { EmailVerificationCode } from './entities/email-verification-code.entity.js';
 import { MailModule } from '../mail/mail.module.js';
+import { OutboxModule } from '../infrastructure/outbox/outbox.module.js';
 @Module({
   imports: [
     ConfigModule,
     MailModule,
+    OutboxModule,
     TypeOrmModule.forFeature([User, Session, Project, EmailVerificationCode]),
     JwtModule.registerAsync({
       inject: [ConfigService],

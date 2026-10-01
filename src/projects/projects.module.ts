@@ -11,10 +11,12 @@ import { OrganizationMember } from '../organizations/entities/organization-membe
 import { ProjectPolicy } from './policies/project.policy.js';
 import { AuthorizationGuard } from '../auth/guards/authorization.guard.js';
 import { TasksModule } from '../tasks/tasks.module.js';
+import { OutboxModule } from '../infrastructure/outbox/outbox.module.js';
 @Module({
   imports: [
       TypeOrmModule.forFeature([Project, Organization, OrganizationMember]),
       TasksModule,
+      OutboxModule
     ],
   controllers: [ProjectsController],
   providers: [ProjectsService, OrganizationsService, AuthorizationService, ProjectAuthorizationService, ProjectPolicy, AuthorizationGuard],
