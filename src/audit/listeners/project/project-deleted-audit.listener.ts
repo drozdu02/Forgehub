@@ -1,24 +1,24 @@
 import { Injectable } from "@nestjs/common";
-import { AuditService } from "../audit.service.js";
+import { AuditService } from "../../audit.service.js";
 import { OnEvent } from "@nestjs/event-emitter";
-import { ProjectUpdatedEvent } from "../../events/events/project/project-updated.event.js";
-import { AuditAction } from "../enums/audit-action.enum.js";
-import { AuditEntityType } from "../enums/audit-entity-type.enum.js";
+import { AuditAction } from "../../enums/audit-action.enum.js";
+import { AuditEntityType } from "../../enums/audit-entity-type.enum.js";
+import { ProjectDeletedEvent } from "../../../events/events/project/project-deleted.event.js";
 
 @Injectable()
-export class ProjectUpdatedAuditListener {
+export class ProjectDeletedAuditListener {
     constructor(
         private readonly auditService: AuditService
     ) {}
 
-    @OnEvent('project.updated')
+    @OnEvent('project.deleted')
     async handle(
-        event: ProjectUpdatedEvent
+        event: ProjectDeletedEvent
     ): Promise<void> {
         await this.auditService.create({
             organizationId: event.organizationId,
             actorUserId: event.actorUserId,
-            action: AuditAction.PROJECT_UPDATED,
+            action: AuditAction.PROJECT_DELETED,
             entityType: AuditEntityType.PROJECT,
             entityId: event.projectId.toString(),
         });

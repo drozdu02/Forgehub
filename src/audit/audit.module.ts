@@ -3,9 +3,14 @@ import { AuditService } from './audit.service.js';
 import { AuditController } from './audit.controller.js';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuditLog } from './entities/audit-log.entity.js';
-import { ProjectCreatedAuditListener } from './listeners/project-created-audit.listener.js';
-import { ProjectUpdatedAuditListener } from './listeners/project-updated-audit.listener.js';
-import { ProjectDeletedAuditListener } from './listeners/project-deleted-audit.listener.js';
+import { ProjectCreatedAuditListener } from './listeners/project/project-created-audit.listener.js';
+import { ProjectUpdatedAuditListener } from './listeners/project/project-updated-audit.listener.js';
+import { ProjectDeletedAuditListener } from './listeners/project/project-deleted-audit.listener.js';
+import { TaskCreatedAuditListener } from './listeners/task/task-created-audit.listener.js';
+import { TaskUpdatedAuditListener } from './listeners/task/task-updated-audit.listener.js';
+import { TaskDeletedAuditListener } from './listeners/task/task-deleted-audit.listener.js';
+import { TaskAssignedAuditListener } from './listeners/task/task-assigned-audit.listener.js';
+import { TaskStatusChangedAuditListener } from './listeners/task/task-status-changed-audit.listener.js';
 
 @Module({
   imports: [
@@ -14,7 +19,17 @@ import { ProjectDeletedAuditListener } from './listeners/project-deleted-audit.l
     ]),
   ],
   controllers: [AuditController],
-  providers: [AuditService, ProjectCreatedAuditListener, ProjectUpdatedAuditListener, ProjectDeletedAuditListener],
+  providers: [
+    AuditService, 
+    ProjectCreatedAuditListener, 
+    ProjectUpdatedAuditListener, 
+    ProjectDeletedAuditListener,
+    TaskCreatedAuditListener,
+    TaskUpdatedAuditListener,
+    TaskDeletedAuditListener,
+    TaskAssignedAuditListener,
+    TaskStatusChangedAuditListener
+  ],
   exports: [AuditService],
 })
 export class AuditModule {}

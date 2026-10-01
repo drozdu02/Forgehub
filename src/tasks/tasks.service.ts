@@ -16,6 +16,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { TaskUpdatedEvent } from '../events/events/task/task-updated.event.js';
 import { TaskStatusChangedEvent } from '../events/events/task/task-status-changed.event.js';
 import { TaskAssignedEvent } from '../events/events/task/task-assigned.event.js';
+import { TaskDeletedEvent } from '../events/events/task/task-deleted.event.js';
 import { TaskPriority } from './enums/task-priority.enum.js';
 import OutboxService from '../infrastructure/outbox/outbox.service.js';
 @Injectable()
@@ -252,7 +253,8 @@ export class TasksService {
                             taskId: savedTask.id,
                             projectId: project.id,
                             organizationId: project.organization.id,
-                            actorUserId: userId
+                            actorUserId: userId,
+                            occuredAt,
                         },
                         occuredAt,
                     },
@@ -281,6 +283,16 @@ export class TasksService {
             id: taskId
         });
 
+        this.eventEmitter.emit(
+            'task.deleted',
+            new TaskDeletedEvent(
+                task.id,
+                task.project.id,
+                task.project.organization.id,
+                userId,
+                new Date(),
+            ),
+        );
     }
 
     async updateTaskById(
@@ -433,7 +445,7 @@ export class TasksService {
 
         if (assigneeChanged) {
             this.eventEmitter.emit(
-                'task.assignee-changed',
+                'task.assigned',
                 new TaskAssignedEvent(
                     updatedTask.id,
                     updatedTask.project.id,
