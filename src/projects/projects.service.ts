@@ -218,17 +218,30 @@ export class ProjectsService {
             Permission.PROJECT_DELETE
         );
         
-        await this.projectRepository.delete(projectId);
+        const occuredAt = new Date();
+        return this.dataSource.transaction(
+            async manager => {
+                await manager.getRepository(Project)
+                .delete({
+                    id: projectId
+                });
 
-        this.eventEmitter.emit(
-            'project.deleted',
-            new ProjectDeletedEvent(
-                project.id,
-                project.organization.id,
-                userId,
-                new Date(),
-            )
-        )
+                await this.outboxService.create(
+                    {
+                        type: 'project.deleted',
+                        payload: {
+                            projectId: project.id,
+                            organizationId: project.organization.id,
+                            actorUserId: userId,
+                            occuredAt,
+                        },
+                        occuredAt,
+                    },
+                    manager,
+                );
+
+            }
+        );
     }
 
     async updateProject(
@@ -261,21 +274,29 @@ export class ProjectsService {
             project.organization = organization;
         }
 
-        const updatedProject = await this.projectRepository.save(project);
+        const occuredAt = new Date();
 
-        this.eventEmitter.emit(
-            'project.updated',
-            new ProjectUpdatedEvent(
-                updatedProject.id,
-                updatedProject.organization.id,
-                userId,
-                new Date()
-            ),
+        return this.dataSource.transaction(
+            async manager => {
+                const updatedProject = await manager.getRepository(Project).save(project);
+
+                await this.outboxService.create(
+                    {
+                        type: 'project.updated',
+                        payload: {
+                            projectId: updatedProject.id,
+                            organizationId: updatedProject.organization.id,
+                            actorUserId: userId,
+                            occuredAt,
+                        },
+                        occuredAt,
+                    },
+                    manager,
+                );
+
+                return updatedProject;
+            }
         );
-
-        return updatedProject;
-
-
     }
 
     async canUserAccessProject(
