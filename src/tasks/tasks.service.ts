@@ -279,19 +279,30 @@ export class TasksService {
             Permission.TASK_DELETE
         );
 
-        await this.taskRespository.delete({
-            id: taskId
-        });
+        const occuredAt = new Date();
 
-        this.eventEmitter.emit(
-            'task.deleted',
-            new TaskDeletedEvent(
-                task.id,
-                task.project.id,
-                task.project.organization.id,
-                userId,
-                new Date(),
-            ),
+        await this.dataSource.transaction(
+            async manager => {
+                await manager.getRepository(Task)
+                .delete({
+                    id: taskId
+                });
+
+                await this.outboxService.create(
+                    {
+                        type: 'task.deleted',
+                        payload: {
+                            taskId: task.id,
+                            projectId: task.project.id,
+                            organizationId: task.project.organization.id,
+                            actorUserId: userId,
+                            occuredAt,
+                        },
+                        occuredAt,
+                    },
+                    manager
+                );
+            }
         );
     }
 
