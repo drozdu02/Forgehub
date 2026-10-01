@@ -8,14 +8,9 @@ import { CreateProjectDto } from './dto/create-project.dto.js';
 import { Organization } from '../organizations/entities/organization.entity.js';
 import { UpdateProjectDto } from './dto/update-project.dto.js';
 import { ProjectAuthorizationContext } from './interfaces/project-authorization-context.interface.js';
-import { AuthorizationService } from '../auth/authorization/authorization.service.js';
 import { Permission } from '../auth/enums/permissions.enum.js';
 import { ProjectPolicy } from './policies/project.policy.js';
-import { EventEmitter2 } from '@nestjs/event-emitter';
-import { ProjectCreatedEvent } from '../events/events/project/project-created.event.js';
 import { OrganizationMember } from '../organizations/entities/organization-member.entity.js';
-import { ProjectUpdatedEvent } from '../events/events/project/project-updated.event.js';
-import { ProjectDeletedEvent } from '../events/events/project/project-deleted.event.js';
 import OutboxService from '../infrastructure/outbox/outbox.service.js';
 
 @Injectable()
@@ -31,9 +26,7 @@ export class ProjectsService {
         @InjectDataSource()
         private readonly dataSource: DataSource,
 
-        private readonly authorizationService: AuthorizationService,
         private readonly projectPolicy: ProjectPolicy,
-        private readonly eventEmitter: EventEmitter2,
         private readonly outboxService: OutboxService
     ){}
 

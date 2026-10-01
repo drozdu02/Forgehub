@@ -22,6 +22,7 @@ import { REFRESH_TOKEN_TTL_MS } from './constants/refresh-token.constant.js';
 import { UserVerifiedEvent } from '../events/events/user/email-verified.event.js';
 import { UserLoggedInEvent } from '../events/events/user/user-logged-in.event.js';
 import { UserRegisteredEvent } from '../events/events/user/user-registered.event.js';
+import OutboxService from '../infrastructure/outbox/outbox.service.js';
 
 @Injectable()
 export class AuthService {
@@ -44,6 +45,7 @@ export class AuthService {
         private readonly redisService: RedisService,
         private readonly mailService: MailService,
         private readonly eventEmmiter: EventEmitter2,
+        private readonly outboxService: OutboxService
     ) {}
 
     private generateRefreshToken(): string {
@@ -116,28 +118,40 @@ export class AuthService {
             registerDto.password
         );
 
-        const user = this.userRepository.create({
-            name: registerDto.name,
-            email: registerDto.email,
-            passwordHash: passwordHash
-        });
-        await this.userRepository.save(user);
+        const occuredAt = new Date();
 
-        await this.createEmailVerificationCode(user);
+        return this.dataSource.transaction(
+            async manager => {
+                const createdUSer = await manager.getRepository(User).create({
+                    name: registerDto.name,
+                    email: registerDto.email,
+                    passwordHash: passwordHash
+                });
 
-        this.eventEmmiter.emit(
-            'user.registered',
-            new UserRegisteredEvent(
-                user.id,
-                user.email,
-            ),
+                const savedUser = await manager.getRepository(User).save(createdUser);
+
+                await this.outboxService.create(
+                    {
+                        type: 'user.registered',
+                        payload: {
+                            userId: savedUser.id,
+                            email: savedUser.email,
+                            occuredAt,
+                        },
+                        occuredAt,
+                    },
+                    manager,
+                );
+
+                await this.createEmailVerificationCode(savedUser);
+
+                return {
+                    id: savedUser.id,
+                    name: savedUser.name,
+                    email: savedUser.email
+                };
+            }
         );
-
-        return {
-            id: user.id,
-            name: user.name,
-            email: user.email
-        }
 
     }
 
