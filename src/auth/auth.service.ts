@@ -19,6 +19,9 @@ import { RedisService } from '../redis/redis.service.js';
 import { MailService } from '../mail/mail.service.js';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { REFRESH_TOKEN_TTL_MS } from './constants/refresh-token.constant.js';
+import { UserVerifiedEvent } from '../events/events/user/email-verified.event.js';
+import { UserLoggedInEvent } from '../events/events/user/user-logged-in.event.js';
+import { UserRegisteredEvent } from '../events/events/user/user-registered.event.js';
 
 @Injectable()
 export class AuthService {
@@ -122,6 +125,14 @@ export class AuthService {
 
         await this.createEmailVerificationCode(user);
 
+        this.eventEmmiter.emit(
+            'user.registered',
+            new UserRegisteredEvent(
+                user.id,
+                user.email,
+            ),
+        );
+
         return {
             id: user.id,
             name: user.name,
@@ -170,6 +181,14 @@ export class AuthService {
         });
 
         await this.sessionRepository.save(session);
+
+        this.eventEmmiter.emit(
+            'user.logged-in',
+            new UserLoggedInEvent(
+                user.id,
+                user.email,
+            ),
+        );
 
         return {
             accessToken: accessToken,
@@ -298,7 +317,7 @@ export class AuthService {
     async verifyEmail(
         verifyEmailDto: VerifyEmailDto
     ): Promise<void> {
-        return this.dataSource.transaction(
+        const verifiedUser = await this.dataSource.transaction(
             async manager => {
                 const user = await manager.findOne(User, {
                     where: {
@@ -367,7 +386,17 @@ export class AuthService {
                 await this.redisService.del(
                     attemptsKey
                 );
+
+                return user;
             }
-        )
+        );
+
+        this.eventEmmiter.emit(
+            'user.verified',
+            new UserVerifiedEvent(
+                verifiedUser.id,
+                verifiedUser.email,
+            ),
+        );
     }
 }

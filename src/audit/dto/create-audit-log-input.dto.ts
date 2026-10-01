@@ -3,9 +3,9 @@ import { AuditAction } from "../enums/audit-action.enum.js";
 import { AuditEntityType } from "../enums/audit-entity-type.enum.js";
 
 export class CreateAuditLogInputDto {
-    @IsNotEmpty()
+    @IsOptional()
     @IsInt()
-    organizationId: number;
+    organizationId?: number;
 
     @IsNotEmpty()
     actorUserId: number | null;

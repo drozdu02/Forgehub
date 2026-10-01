@@ -14,10 +14,11 @@ export class AuditLog {
         () => Organization,
         (organization) => organization.auditLogs,
         {
+            nullable: true,
             onDelete: 'CASCADE'
         },
     )
-    organization: Relation<Organization>
+    organization: Relation<Organization> | null
 
     @ManyToOne(
         () => User,

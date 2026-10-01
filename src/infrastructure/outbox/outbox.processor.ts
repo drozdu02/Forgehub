@@ -52,9 +52,8 @@ export class OutboxProcessor implements OnModuleInit, OnModuleDestroy {
         this.eventEmitter.emit(
             event.type,
             {
-                eventId: event.id,
-                payload: event.payload,
-                occuretAt: event.occuredAt
+                ...event.payload,
+                occuredAt: event.occuredAt,
             },
         );
 
