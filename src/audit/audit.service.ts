@@ -16,7 +16,15 @@ export class AuditService {
     async create(
         createAuditLogInputDto: CreateAuditLogInputDto
     ): Promise<AuditLog> {
+        if (createAuditLogInputDto.eventId) {
+            const existing = await this.auditLogRepository.findOne({
+                where: {
+                    eventId: createAuditLogInputDto.eventId
+                },
+            });
+        }
         const auditLog = this.auditLogRepository.create({
+            eventId: createAuditLogInputDto.entityId ?? null,
             organization: {
                 id: createAuditLogInputDto.organizationId
             },
