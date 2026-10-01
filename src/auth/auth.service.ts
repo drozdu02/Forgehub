@@ -20,6 +20,7 @@ import { MailService } from '../mail/mail.service.js';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { REFRESH_TOKEN_TTL_MS } from './constants/refresh-token.constant.js';
 import { UserVerifiedEvent } from '../events/events/user/email-verified.event.js';
+import { UserLoggedInEvent } from '../events/events/user/user-logged-in.event.js';
 
 @Injectable()
 export class AuthService {
@@ -171,6 +172,14 @@ export class AuthService {
         });
 
         await this.sessionRepository.save(session);
+
+        this.eventEmmiter.emit(
+            'user.logged-in',
+            new UserLoggedInEvent(
+                user.id,
+                user.email,
+            ),
+        );
 
         return {
             accessToken: accessToken,

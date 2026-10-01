@@ -12,6 +12,7 @@ import { TaskDeletedAuditListener } from './listeners/task/task-deleted-audit.li
 import { TaskAssignedAuditListener } from './listeners/task/task-assigned-audit.listener.js';
 import { TaskStatusChangedAuditListener } from './listeners/task/task-status-changed-audit.listener.js';
 import { UserVerifiedAuditListener } from './listeners/user/user-verified-audit.listener.js';
+import { UserLoggedInAuditListener } from './listeners/user/user-logged-in-audit.listener.js';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { UserVerifiedAuditListener } from './listeners/user/user-verified-audit.
     TaskAssignedAuditListener,
     TaskStatusChangedAuditListener,
     UserVerifiedAuditListener,
+    UserLoggedInAuditListener,
   ],
   exports: [AuditService],
 })
