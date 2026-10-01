@@ -14,7 +14,7 @@ export class TaskAssignedAuditListener {
 
     @OnEvent('task.assigned')
     async handle(
-        event: TaskAssignedEvent
+        event: TaskAssignedEvent & { eventId: string }
     ): Promise<void> {
         await this.auditService.create({
             organizationId: event.organizationId,
@@ -22,6 +22,7 @@ export class TaskAssignedAuditListener {
             action: AuditAction.TASK_ASSIGNED,
             entityType: AuditEntityType.TASK,
             entityId: event.taskId.toString(),
+            eventId: event.eventId,
         });
     }
 }

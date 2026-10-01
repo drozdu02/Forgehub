@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
+import { DataSource, In, Repository } from 'typeorm';
 import { Project } from './entities/project.entity.js';
 import { PaginationQueryDto } from './dto/pagination-query.dto.js';
 import { PaginatedResultDto } from './dto/paginated-result.dto.js';
@@ -8,14 +8,10 @@ import { CreateProjectDto } from './dto/create-project.dto.js';
 import { Organization } from '../organizations/entities/organization.entity.js';
 import { UpdateProjectDto } from './dto/update-project.dto.js';
 import { ProjectAuthorizationContext } from './interfaces/project-authorization-context.interface.js';
-import { AuthorizationService } from '../auth/authorization/authorization.service.js';
 import { Permission } from '../auth/enums/permissions.enum.js';
 import { ProjectPolicy } from './policies/project.policy.js';
-import { EventEmitter2 } from '@nestjs/event-emitter';
-import { ProjectCreatedEvent } from '../events/events/project/project-created.event.js';
 import { OrganizationMember } from '../organizations/entities/organization-member.entity.js';
-import { ProjectUpdatedEvent } from '../events/events/project/project-updated.event.js';
-import { ProjectDeletedEvent } from '../events/events/project/project-deleted.event.js';
+import OutboxService from '../infrastructure/outbox/outbox.service.js';
 
 @Injectable()
 export class ProjectsService {
@@ -27,9 +23,11 @@ export class ProjectsService {
         @InjectRepository(OrganizationMember)
         private readonly organizationMemberRepository: Repository<OrganizationMember>,
 
-        private readonly authorizationService: AuthorizationService,
+        @InjectDataSource()
+        private readonly dataSource: DataSource,
+
         private readonly projectPolicy: ProjectPolicy,
-        private readonly eventEmitter: EventEmitter2
+        private readonly outboxService: OutboxService
     ){}
 
     private async getProjectForAuthorization(
@@ -167,26 +165,35 @@ export class ProjectsService {
         if (!organization) {
             throw new NotFoundException(`Organization with id ${organizationId} not found`);
         }
-        const project = this.projectRepository.create({
-            ...createProjectDto,
-            organization
-        });
-        await this.projectRepository.save(project);
 
-        this.eventEmitter.emit(
-            'project.created',
-            new ProjectCreatedEvent(
-                project.id,
-                organization.id,
-                userId,
-                new Date(),
-            ),
+        const occuredAt = new Date();
+
+        return this.dataSource.transaction(
+            async manager => {
+                const project = await manager.getRepository(Project).create({
+                    ...createProjectDto,
+                    organization
+                });
+
+                const savedProject = await manager.getRepository(Project).save(project);
+
+                await this.outboxService.create(
+                    {
+                        type: 'project.created',
+                        payload: {
+                            projectId: savedProject.id,
+                            organizationId: savedProject.organization.id,
+                            actorUserId: userId,
+                            occuredAt,
+                        },
+                        occuredAt,
+                    },
+                    manager,
+                );
+
+                return savedProject;
+            }
         );
-
-        return project;
-
-
-
     }
 
     async deleteProject(
@@ -204,17 +211,30 @@ export class ProjectsService {
             Permission.PROJECT_DELETE
         );
         
-        await this.projectRepository.delete(projectId);
+        const occuredAt = new Date();
+        return this.dataSource.transaction(
+            async manager => {
+                await manager.getRepository(Project)
+                .delete({
+                    id: projectId
+                });
 
-        this.eventEmitter.emit(
-            'project.deleted',
-            new ProjectDeletedEvent(
-                project.id,
-                project.organization.id,
-                userId,
-                new Date(),
-            )
-        )
+                await this.outboxService.create(
+                    {
+                        type: 'project.deleted',
+                        payload: {
+                            projectId: project.id,
+                            organizationId: project.organization.id,
+                            actorUserId: userId,
+                            occuredAt,
+                        },
+                        occuredAt,
+                    },
+                    manager,
+                );
+
+            }
+        );
     }
 
     async updateProject(
@@ -247,21 +267,29 @@ export class ProjectsService {
             project.organization = organization;
         }
 
-        const updatedProject = await this.projectRepository.save(project);
+        const occuredAt = new Date();
 
-        this.eventEmitter.emit(
-            'project.updated',
-            new ProjectUpdatedEvent(
-                updatedProject.id,
-                updatedProject.organization.id,
-                userId,
-                new Date()
-            ),
+        return this.dataSource.transaction(
+            async manager => {
+                const updatedProject = await manager.getRepository(Project).save(project);
+
+                await this.outboxService.create(
+                    {
+                        type: 'project.updated',
+                        payload: {
+                            projectId: updatedProject.id,
+                            organizationId: updatedProject.organization.id,
+                            actorUserId: userId,
+                            occuredAt,
+                        },
+                        occuredAt,
+                    },
+                    manager,
+                );
+
+                return updatedProject;
+            }
         );
-
-        return updatedProject;
-
-
     }
 
     async canUserAccessProject(

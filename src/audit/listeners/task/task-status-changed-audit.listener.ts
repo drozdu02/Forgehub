@@ -13,7 +13,7 @@ export class TaskStatusChangedAuditListener {
 
     @OnEvent('task.status-changed')
     async handle(
-        event: TaskStatusChangedEvent
+        event: TaskStatusChangedEvent & { eventId: string }
     ): Promise<void> {
         await this.auditService.create({
             organizationId: event.organizationId,
@@ -21,6 +21,7 @@ export class TaskStatusChangedAuditListener {
             action: AuditAction.TASK_STATUS_CHANGED,
             entityType: AuditEntityType.TASK,
             entityId: event.taskId.toString(),
+            eventId: event.eventId,
         });
     }
 }

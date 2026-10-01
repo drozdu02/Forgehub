@@ -13,14 +13,15 @@ export class ProjectCreatedAuditListener {
 
     @OnEvent('project.created')
     async handle(
-        event: ProjectCreatedEvent
+        event: ProjectCreatedEvent & { eventId: string }
     ): Promise<void> {
         await this.auditService.create({
             organizationId: event.organizationId,
             actorUserId: event.actorUserId,
             action: AuditAction.PROJECT_CREATED,
             entityType: AuditEntityType.PROJECT,
-            entityId: event.projectId.toString()
+            entityId: event.projectId.toString(),
+            eventId: event.eventId,
         });
     }
 }

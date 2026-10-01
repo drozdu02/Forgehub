@@ -13,13 +13,14 @@ export class UserRegisteredAuditListener {
 
     @OnEvent('user.registered')
     async handle(
-        event: UserRegisteredEvent
+        event: UserRegisteredEvent & { eventId: string }
     ): Promise<void> {
         await this.auditService.create({
             actorUserId: event.userId,
             action: AuditAction.USER_REGISTERED,
             entityType: AuditEntityType.USER,
             entityId: event.userId.toString(),
+            eventId: event.eventId,
             metadata: {
                 email: event.email,
             },

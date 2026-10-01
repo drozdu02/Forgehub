@@ -13,7 +13,7 @@ export class ProjectDeletedAuditListener {
 
     @OnEvent('project.deleted')
     async handle(
-        event: ProjectDeletedEvent
+        event: ProjectDeletedEvent & { eventId: string }
     ): Promise<void> {
         await this.auditService.create({
             organizationId: event.organizationId,
@@ -21,6 +21,7 @@ export class ProjectDeletedAuditListener {
             action: AuditAction.PROJECT_DELETED,
             entityType: AuditEntityType.PROJECT,
             entityId: event.projectId.toString(),
+            eventId: event.eventId,
         });
     }
 }

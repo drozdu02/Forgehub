@@ -13,13 +13,14 @@ export class UserVerifiedAuditListener {
 
     @OnEvent('user.verified')
     async handle(
-        event: UserVerifiedEvent
+        event: UserVerifiedEvent & { eventId: string }
     ): Promise<void> {
         await this.auditService.create({
             actorUserId: event.userId,
             action: AuditAction.USER_VERIFIED,
             entityType: AuditEntityType.USER,
             entityId: event.userId.toString(),
+            eventId: event.eventId,
             metadata: {
                 email: event.email,
             },

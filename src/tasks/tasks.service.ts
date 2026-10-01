@@ -279,19 +279,30 @@ export class TasksService {
             Permission.TASK_DELETE
         );
 
-        await this.taskRespository.delete({
-            id: taskId
-        });
+        const occuredAt = new Date();
 
-        this.eventEmitter.emit(
-            'task.deleted',
-            new TaskDeletedEvent(
-                task.id,
-                task.project.id,
-                task.project.organization.id,
-                userId,
-                new Date(),
-            ),
+        await this.dataSource.transaction(
+            async manager => {
+                await manager.getRepository(Task)
+                .delete({
+                    id: taskId
+                });
+
+                await this.outboxService.create(
+                    {
+                        type: 'task.deleted',
+                        payload: {
+                            taskId: task.id,
+                            projectId: task.project.id,
+                            organizationId: task.project.organization.id,
+                            actorUserId: userId,
+                            occuredAt,
+                        },
+                        occuredAt,
+                    },
+                    manager
+                );
+            }
         );
     }
 
@@ -410,54 +421,72 @@ export class TasksService {
             return task;
         }
 
-        const updatedTask = await this.taskRespository.save(task);
-
         const occuredAt = new Date();
 
-        if (Object.keys(changes).length > 0) {
-            this.eventEmitter.emit(
-                'task.updated',
-                new TaskUpdatedEvent(
-                    updatedTask.id,
-                    updatedTask.project.id,
-                    updatedTask.project.organization.id,
-                    userId,
-                    changes,
-                    occuredAt
-                ),
-            );
-        }
+        const updatedTask = await this.dataSource.transaction(
+            async manager => {
+                const savedTask = await manager.getRepository(Task).save(task);
 
-        if (statusChanged) {
-            this.eventEmitter.emit(
-                'task.status-changed',
-                new TaskStatusChangedEvent(
-                    updatedTask.id,
-                    updatedTask.project.id,
-                    task.project.organization.id,
-                    userId,
-                    oldStatus,
-                    updatedTask.taskStatus,
-                    occuredAt
-                ),
-            );
-        }
+                if (Object.keys(changes).length > 0) {
+                    await this.outboxService.create(
+                        {
+                            type: 'task.updated',
+                            payload: {
+                                taskId: savedTask.id,
+                                projectId: savedTask.project.id,
+                                organizationId: savedTask.project.organization.id,
+                                actorUserId: userId,
+                                changes,
+                                occuredAt,
+                            },
+                            occuredAt,
+                        
+                        },
+                        manager
+                    );
+                }
 
-        if (assigneeChanged) {
-            this.eventEmitter.emit(
-                'task.assigned',
-                new TaskAssignedEvent(
-                    updatedTask.id,
-                    updatedTask.project.id,
-                    task.project.organization.id,
-                    userId,
-                    oldAssigneeId,
-                    newAssigneeId,
-                    occuredAt,
-                ),
-            );
-        }
+                if (statusChanged) {
+                    await this.outboxService.create(
+                        {
+                            type: 'task.status-changed',
+                            payload: {
+                                taskId: savedTask.id,
+                                projectId: savedTask.project.id,
+                                organizationId: savedTask.project.organization.id,
+                                actorUserId: userId,
+                                oldStatus,
+                                newStatus: savedTask.taskStatus,
+                                occuredAt,
+                            },
+                            occuredAt,
+                        },
+                        manager
+                    );
+                }
 
+                if (assigneeChanged) {
+                    await this.outboxService.create(
+                        {
+                            type: 'task.assigned',
+                            payload: {
+                                taskId: savedTask.id,
+                                projectId: savedTask.project.id,
+                                organizationId: savedTask.project.organization.id,
+                                actorUserId: userId,
+                                previousAssigneeId: oldAssigneeId,
+                                newAssigneeId,
+                                occuredAt,
+                            },
+                            occuredAt,
+                        },
+                        manager
+                    )
+                }
+
+                return savedTask;
+            }
+        );
         return updatedTask;
 
     }
