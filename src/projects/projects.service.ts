@@ -172,26 +172,35 @@ export class ProjectsService {
         if (!organization) {
             throw new NotFoundException(`Organization with id ${organizationId} not found`);
         }
-        const project = this.projectRepository.create({
-            ...createProjectDto,
-            organization
-        });
-        await this.projectRepository.save(project);
 
-        this.eventEmitter.emit(
-            'project.created',
-            new ProjectCreatedEvent(
-                project.id,
-                organization.id,
-                userId,
-                new Date(),
-            ),
+        const occuredAt = new Date();
+
+        return this.dataSource.transaction(
+            async manager => {
+                const project = await manager.getRepository(Project).create({
+                    ...createProjectDto,
+                    organization
+                });
+
+                const savedProject = await manager.getRepository(Project).save(project);
+
+                await this.outboxService.create(
+                    {
+                        type: 'project.created',
+                        payload: {
+                            projectId: savedProject.id,
+                            organizationId: savedProject.organization.id,
+                            actorUserId: userId,
+                            occuredAt,
+                        },
+                        occuredAt,
+                    },
+                    manager,
+                );
+
+                return savedProject;
+            }
         );
-
-        return project;
-
-
-
     }
 
     async deleteProject(
