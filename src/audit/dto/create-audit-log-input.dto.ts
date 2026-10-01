@@ -22,6 +22,7 @@ export class CreateAuditLogInputDto {
     entityId: string;
 
     @IsString()
+    @IsOptional()
     eventId?: string | null;
 
     @IsOptional()

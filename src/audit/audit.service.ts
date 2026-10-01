@@ -22,19 +22,24 @@ export class AuditService {
                     eventId: createAuditLogInputDto.eventId
                 },
             });
+
+            if (existing) {
+                return existing;
+            }
         }
+
         const auditLog = this.auditLogRepository.create({
-            eventId: createAuditLogInputDto.entityId ?? null,
-            organization: createAuditLogInputDto.organizationId
-                ? { id: createAuditLogInputDto.organizationId }
-                : null,
+            eventId: createAuditLogInputDto.eventId ?? null,
+            organization: createAuditLogInputDto.organizationId ? { id: createAuditLogInputDto.organizationId } : null,
             actor: createAuditLogInputDto.actorUserId ? { id: createAuditLogInputDto.actorUserId } : null,
             action: createAuditLogInputDto.action,
             entityType: createAuditLogInputDto.entityType,
             entityId: createAuditLogInputDto.entityId,
             metadata: createAuditLogInputDto.metadata ?? null,
         });
+
         return this.auditLogRepository.save(auditLog);
+        
     }
 
     async getForOrganization(

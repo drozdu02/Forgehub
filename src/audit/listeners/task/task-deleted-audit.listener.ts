@@ -13,7 +13,7 @@ export class TaskDeletedAuditListener {
 
     @OnEvent('task.deleted')
     async handle(
-        event: TaskDeletedEvent
+        event: TaskDeletedEvent & { eventId: string }
     ): Promise<void> {
         await this.auditService.create({
             organizationId: event.organizationId,
@@ -21,6 +21,7 @@ export class TaskDeletedAuditListener {
             action: AuditAction.TASK_DELETED,
             entityType: AuditEntityType.TASK,
             entityId: event.taskId.toString(),
+            eventId: event.eventId,
         });
     }
 }
