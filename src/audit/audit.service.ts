@@ -25,9 +25,9 @@ export class AuditService {
         }
         const auditLog = this.auditLogRepository.create({
             eventId: createAuditLogInputDto.entityId ?? null,
-            organization: {
-                id: createAuditLogInputDto.organizationId
-            },
+            organization: createAuditLogInputDto.organizationId
+                ? { id: createAuditLogInputDto.organizationId }
+                : null,
             actor: createAuditLogInputDto.actorUserId ? { id: createAuditLogInputDto.actorUserId } : null,
             action: createAuditLogInputDto.action,
             entityType: createAuditLogInputDto.entityType,
