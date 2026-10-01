@@ -21,6 +21,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { REFRESH_TOKEN_TTL_MS } from './constants/refresh-token.constant.js';
 import { UserVerifiedEvent } from '../events/events/user/email-verified.event.js';
 import { UserLoggedInEvent } from '../events/events/user/user-logged-in.event.js';
+import { UserRegisteredEvent } from '../events/events/user/user-registered.event.js';
 
 @Injectable()
 export class AuthService {
@@ -123,6 +124,14 @@ export class AuthService {
         await this.userRepository.save(user);
 
         await this.createEmailVerificationCode(user);
+
+        this.eventEmmiter.emit(
+            'user.registered',
+            new UserRegisteredEvent(
+                user.id,
+                user.email,
+            ),
+        );
 
         return {
             id: user.id,
