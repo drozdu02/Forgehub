@@ -5,7 +5,7 @@ services:
     restart: unless-stopped
     environment:
       - POSTGRES_USER: forgehub
-      - POSTGRES_PASSWORD: forgehuc
+      - POSTGRES_PASSWORD: forgehub
       - POSTGRES_DB: forgehubdb
     ports:
       - "5432:5432"
