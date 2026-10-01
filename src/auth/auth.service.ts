@@ -120,9 +120,9 @@ export class AuthService {
 
         const occuredAt = new Date();
 
-        return this.dataSource.transaction(
+        const user = await this.dataSource.transaction(
             async manager => {
-                const createdUSer = await manager.getRepository(User).create({
+                const createdUser = await manager.getRepository(User).create({
                     name: registerDto.name,
                     email: registerDto.email,
                     passwordHash: passwordHash
@@ -143,15 +143,16 @@ export class AuthService {
                     manager,
                 );
 
-                await this.createEmailVerificationCode(savedUser);
-
-                return {
-                    id: savedUser.id,
-                    name: savedUser.name,
-                    email: savedUser.email
-                };
+                return savedUser;
             }
         );
+
+        await this.createEmailVerificationCode(user);
+        return {
+            id: user.id,
+            name: user.name,
+            email: user.email
+        };
 
     }
 
@@ -184,30 +185,44 @@ export class AuthService {
 
         const accessToken = await this.generateAccessToken(user.id);
 
-        const session = await this.sessionRepository.create({
-            familyId: randomUUID(),
-            user,
-            refreshTokenHash,
-            expiresAt: new Date(Date.now() + REFRESH_TOKEN_TTL_MS),
-            revokedAt: null,
-            lastUsedAt: null,
-            replacedBySessionId: null
-        });
+        const occuredAt = new Date();
 
-        await this.sessionRepository.save(session);
+        const session = await this.dataSource.transaction(
+            async manager => {
+                const session = await manager.getRepository(Session).create({
+                    familyId: randomUUID(),
+                    user,
+                    refreshTokenHash,
+                    expiresAt: new Date(Date.now() + REFRESH_TOKEN_TTL_MS),
+                    revokedAt: null,
+                    lastUsedAt: null,
+                    replacedBySessionId: null
+                });
 
-        this.eventEmmiter.emit(
-            'user.logged-in',
-            new UserLoggedInEvent(
-                user.id,
-                user.email,
-            ),
+                const savedSession = await manager.getRepository(Session).save(session);
+
+                await this.outboxService.create(
+                    {
+                        type: 'user.logged-in',
+                        payload: {
+                            userId: user.id,
+                            email: user.email,
+                            occuredAt,
+                        },
+                        occuredAt,
+                    },
+                    manager,
+                );
+
+                return savedSession;
+
+            }
         );
 
         return {
             accessToken: accessToken,
             refreshToken: refreshToken,
-            refreshTokenExpiresAt: session.expiresAt,
+            refreshTokenExpiresAt: session.expiresAt
         };
     }
 
