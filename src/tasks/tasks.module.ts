@@ -8,14 +8,14 @@ import { OrganizationMember } from '../organizations/entities/organization-membe
 import { User } from '../user/entities/user.entity.js';
 import { TaskPolicy } from './policies/task.policy.js';
 import { AuthorizationService } from '../auth/authorization/authorization.service.js';
-import OutboxService from '../infrastructure/outbox/outbox.service.js';
-import { OutboxEvent } from '../events/entities/outbox-event.entity.js';
+import { OutboxModule } from '../infrastructure/outbox/outbox.module.js';
 @Module({
   imports: [
-      TypeOrmModule.forFeature([Task, Project, OrganizationMember, User, OutboxEvent])
+      TypeOrmModule.forFeature([Task, Project, OrganizationMember, User]),
+      OutboxModule
     ],
   controllers: [TasksController],
-  providers: [TasksService, TaskPolicy, AuthorizationService, OutboxService],
+  providers: [TasksService, TaskPolicy, AuthorizationService],
   exports: [TasksService],
 })
 export class TasksModule {}

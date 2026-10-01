@@ -12,4 +12,4 @@ import { OutboxProcessor } from './outbox.processor.js';
   providers: [OutboxService, OutboxProcessor],
   exports: [OutboxService],
 })
-export class TasksModule {}
+export class OutboxModule {}

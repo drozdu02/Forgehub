@@ -49,12 +49,12 @@ export class OutboxProcessor implements OnModuleInit, OnModuleDestroy {
     private async processEvent(
         event: OutboxEvent
     ): Promise<void> {
-        this.eventEmitter.emit(
-            event.type,
-            {
+        await this.eventEmitter.emitAsync(
+            event.type, {
                 ...event.payload,
                 occuredAt: event.occuredAt,
-            },
+                eventId: event.id,
+            }
         );
 
         event.processedAt = new Date();
