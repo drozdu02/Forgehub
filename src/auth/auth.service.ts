@@ -17,11 +17,7 @@ import { EmailVerificationCode } from './entities/email-verification-code.entity
 import { VerifyEmailDto } from './dto/verify-email.dto.js';
 import { RedisService } from '../redis/redis.service.js';
 import { MailService } from '../mail/mail.service.js';
-import { EventEmitter2 } from '@nestjs/event-emitter';
 import { REFRESH_TOKEN_TTL_MS } from './constants/refresh-token.constant.js';
-import { UserVerifiedEvent } from '../events/events/user/email-verified.event.js';
-import { UserLoggedInEvent } from '../events/events/user/user-logged-in.event.js';
-import { UserRegisteredEvent } from '../events/events/user/user-registered.event.js';
 import OutboxService from '../infrastructure/outbox/outbox.service.js';
 
 @Injectable()
@@ -44,7 +40,6 @@ export class AuthService {
         private readonly jwtService: JwtService,
         private readonly redisService: RedisService,
         private readonly mailService: MailService,
-        private readonly eventEmmiter: EventEmitter2,
         private readonly outboxService: OutboxService
     ) {}
 
@@ -411,6 +406,20 @@ export class AuthService {
                 user.emailVerifiedAt = new Date();
 
                 await manager.save(User, user);
+                const occuredAt = new Date();
+
+                await this.outboxService.create(
+                    {
+                        type: 'user.verified',
+                        payload: {
+                            userId: user.id,
+                            email: user.email,
+                            occuredAt,
+                        },
+                        occuredAt,
+                    },
+                    manager,
+                );
 
                 await this.redisService.del(
                     attemptsKey
@@ -418,14 +427,6 @@ export class AuthService {
 
                 return user;
             }
-        );
-
-        this.eventEmmiter.emit(
-            'user.verified',
-            new UserVerifiedEvent(
-                verifiedUser.id,
-                verifiedUser.email,
-            ),
         );
     }
 }
