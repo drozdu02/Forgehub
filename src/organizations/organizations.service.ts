@@ -6,6 +6,7 @@ import { User } from '../user/entities/user.entity.js';
 import { OrganizationMember } from './entities/organization-member.entity.js';
 import { OrganizationRole } from './enums/organization-role.enum.js';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
+import OutboxService from '../infrastructure/outbox/outbox.service.js';
 
 @Injectable()
 export class OrganizationsService {
@@ -13,7 +14,8 @@ export class OrganizationsService {
         @InjectRepository(Organization)
         private readonly organizationRepository: Repository<Organization>,
         @InjectDataSource()
-        private readonly dataSource: DataSource
+        private readonly dataSource: DataSource,
+        private readonly outboxService: OutboxService
     ){}
 
     async createOrganization(
@@ -43,8 +45,27 @@ export class OrganizationsService {
                     role: OrganizationRole.OWNER
                 });
                 await manager.save(memberShip);
+
+                const occuredAt = new Date();
+
+                await this.outboxService.create(
+                    {
+                        type: 'organization.created',
+                        payload: {
+                            organizationId: savedOrganization.id,
+                            actorUserId: userId,
+                            name: savedOrganization.name,
+                            slug: savedOrganization.slug,
+                            occuredAt,
+                        },
+                        occuredAt,
+                    },
+                    manager,
+                );
                 return savedOrganization;
             },
         );
     }
+
+    
 }

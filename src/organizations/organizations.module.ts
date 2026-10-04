@@ -10,11 +10,13 @@ import { AuthorizationService } from '../auth/authorization/authorization.servic
 import { ProjectPolicy } from '../projects/policies/project.policy.js';
 import { AuthorizationGuard } from '../auth/guards/authorization.guard.js';
 import { AuditModule } from '../audit/audit.module.js';
+import { OutboxModule } from '../infrastructure/outbox/outbox.module.js';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Organization, OrganizationMember, Project]),
     AuditModule,
+    OutboxModule,
   ],
   controllers: [OrganizationsController],
   providers: [OrganizationsService, ProjectsService, AuthorizationService, ProjectPolicy, AuthorizationGuard],
