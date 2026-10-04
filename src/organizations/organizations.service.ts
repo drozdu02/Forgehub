@@ -36,8 +36,29 @@ export class OrganizationsService {
                     name: createOrganizationDto.name,
                     slug: createOrganizationDto.slug
                 });
+
+                
                 
                 const savedOrganization = await manager.save(organization);
+
+                const occuredAt = new Date();
+
+
+                await this.outboxService.create(
+                    {
+                        type: 'organization.member.added',
+                        payload: {
+                            organizationId: savedOrganization.id,
+                            actorUserId: userId,
+                            memberUserId: user.id,
+                            role: OrganizationRole.OWNER,
+                            occuredAt,
+                        },
+                        occuredAt,
+                    },
+                    manager,
+                    
+                );
 
                 const memberShip = manager.create(OrganizationMember, {
                     user: user,
@@ -46,7 +67,6 @@ export class OrganizationsService {
                 });
                 await manager.save(memberShip);
 
-                const occuredAt = new Date();
 
                 await this.outboxService.create(
                     {
