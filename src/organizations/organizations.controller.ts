@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseIntPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { OrganizationsService } from './organizations.service.js';
 import { CreateOrganizationDto } from './dto/create-organization.dto.js';
 import { ProjectsService } from '../projects/projects.service.js';
@@ -15,6 +15,7 @@ import { PaginatedResultDto } from '../projects/dto/paginated-result.dto.js';
 import { PaginationQueryDto } from '../projects/dto/pagination-query.dto.js';
 import { ChangeMemberRoleDto } from './dto/change-member-role.dto.js';
 import { OrganizationMember } from './entities/organization-member.entity.js';
+import { AddMemberDto } from './dto/add-member.dto.js';
 
 @Controller('organizations')
 export class OrganizationsController {
@@ -105,6 +106,43 @@ export class OrganizationsController {
       organizationId,
       memberUserId,
       changeMemberRoleDto.role
+    );
+  }
+
+  @UseGuards(
+    JwtAuthGuard,
+    AuthorizationGuard
+  )
+  @RequirePermission(Permission.MEMBER_INVITE)
+  @Post(':organizationId/members')
+  addMember(
+    @Param('organizationId', ParseIntPipe) organizationId: number,
+    @Body() addMemberDto: AddMemberDto,
+    @CurrentUser() user: { userId: number }
+  ): Promise<OrganizationMember> {
+    return this.organizationsService.addMember(
+      user.userId,
+      organizationId,
+      addMemberDto.userId,
+      addMemberDto.role
+    )
+  }
+
+  @UseGuards(
+    JwtAuthGuard,
+    AuthorizationGuard
+  )
+  @RequirePermission(Permission.MEMBER_REMOVE)
+  @Delete(':organizationId/members/:memberUserId')
+  removeMember(
+    @Param('organizationId', ParseIntPipe) organizationId: number,
+    @Param('memberUserId', ParseIntPipe) memberUserId: number,
+    @CurrentUser() user: { userId: number }
+  ): Promise<void> {
+    return this.organizationsService.removeMember(
+      user.userId, 
+      organizationId, 
+      memberUserId
     );
   }
 }
