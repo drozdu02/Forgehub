@@ -8,11 +8,10 @@ import { OrganizationsModule } from './organizations/organizations.module.js';
 import { TasksModule } from './tasks/tasks.module.js';
 import { ProjectsModule } from './projects/projects.module.js';
 import { AuthModule } from './auth/auth.module.js';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { RedisModule } from './redis/redis.module.js';
 import { BullModule } from '@nestjs/bullmq';
 import { MailModule } from './mail/mail.module.js';
-import { EventsModule } from './events/events.module.js';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { AuditModule } from './audit/audit.module.js';
 
@@ -23,23 +22,37 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
     ConfigModule.forRoot({
       isGlobal: true
     }),
-    BullModule.forRoot({
-      connection: {
-        host: 'localhost',
-        port: 6379
-      }
+    BullModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        connection: {
+          host: configService.getOrThrow<string>('REDIS_HOST'),
+          port: Number(configService.getOrThrow<string>('REDIS_PORT')),
+        },
+      }),
     }),
     EventEmitterModule.forRoot(),
-    TypeOrmModule.forRoot({
-      type: 'postgres',
-      host: 'localhost',
-      port: 5432,
-      username: 'forgehub',
-      password: 'forgehub',
-      database: 'forgehubdb',
-      autoLoadEntities: true,
-      synchronize: false,
-    }), UserModule, OrganizationsModule, TasksModule, ProjectsModule, AuthModule, RedisModule, MailModule, EventsModule, AuditModule
+    TypeOrmModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        type: 'postgres' as const,
+        host: configService.getOrThrow<string>('DB_HOST'),
+        port: Number(configService.getOrThrow<string>('DB_PORT')),
+        username: configService.getOrThrow<string>('DB_USERNAME'),
+        password: configService.getOrThrow<string>('DB_PASSWORD'),
+        database: configService.getOrThrow<string>('DB_NAME'),
+        autoLoadEntities: true,
+        synchronize: false,
+      })
+    }), 
+    UserModule, 
+    OrganizationsModule, 
+    TasksModule, 
+    ProjectsModule, 
+    AuthModule, 
+    RedisModule, 
+    MailModule, 
+    AuditModule
   ],
   controllers: [AppController],
   providers: [AppService],
