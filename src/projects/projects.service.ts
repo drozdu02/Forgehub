@@ -1,0 +1,339 @@
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
+import { DataSource, In, Repository } from 'typeorm';
+import { Project } from './entities/project.entity.js';
+import { PaginationQueryDto } from './dto/pagination-query.dto.js';
+import { PaginatedResultDto } from './dto/paginated-result.dto.js';
+import { CreateProjectDto } from './dto/create-project.dto.js';
+import { Organization } from '../organizations/entities/organization.entity.js';
+import { UpdateProjectDto } from './dto/update-project.dto.js';
+import { ProjectAuthorizationContext } from './interfaces/project-authorization-context.interface.js';
+import { Permission } from '../auth/enums/permissions.enum.js';
+import { ProjectPolicy } from './policies/project.policy.js';
+import { OrganizationMember } from '../organizations/entities/organization-member.entity.js';
+import OutboxService from '../infrastructure/outbox/outbox.service.js';
+
+@Injectable()
+export class ProjectsService {
+    constructor(
+        @InjectRepository(Project)
+        private readonly projectRepository: Repository<Project>,
+        @InjectRepository(Organization)
+        private readonly organizationRepository: Repository<Organization>,
+        @InjectRepository(OrganizationMember)
+        private readonly organizationMemberRepository: Repository<OrganizationMember>,
+
+        @InjectDataSource()
+        private readonly dataSource: DataSource,
+
+        private readonly projectPolicy: ProjectPolicy,
+        private readonly outboxService: OutboxService
+    ){}
+
+    private async getProjectForAuthorization(
+        projectId: number
+    ): Promise<Project> {
+        const project = await this.projectRepository.findOne({
+            where: {
+                id: projectId
+            },
+            relations: {
+                organization: true
+            },
+        });
+
+        if (!project) {
+            throw new NotFoundException(`Project with id ${projectId} not found`);
+        }
+        return project;
+    }
+
+    async getAllProjects(
+        userId: number,
+        paginationQueryDto: PaginationQueryDto
+    ): Promise<PaginatedResultDto<Project>> {
+        const page = paginationQueryDto.page ?? 1;
+        const limit = paginationQueryDto.limit ?? 10;
+
+        const memberships = await this.organizationMemberRepository.find({
+            where: {
+                user: {
+                    id: userId
+                },
+            },
+            relations: {
+                organization: true
+            },
+        });
+
+        const organizationIds = memberships.map((membership) => membership.organization.id);
+
+        if (organizationIds.length === 0) {
+            return {
+                data: [],
+                meta: {
+                    total: 0,
+                    page,
+                    limit,
+                    totalPages: 0,
+                }
+            };
+        }
+
+        const [data, total] = await this.projectRepository.findAndCount({
+            where: {
+                organization: {
+                    id: In(organizationIds)
+                },
+            },
+            skip: (page - 1) * limit,
+            take: limit,
+        });
+        return {
+            data,
+            meta: {
+                total,
+                page,
+                limit,
+                totalPages: Math.ceil(total / limit),
+            }
+        }
+    }
+
+    async getProjectById(
+        userId: number,
+        projectId: number,
+    ): Promise<Project> {
+        const project = await this.getProjectForAuthorization(
+            projectId
+        );
+
+        await this.projectPolicy.can(
+            userId,
+            project,
+            Permission.PROJECT_READ
+        );
+
+        return project;
+    }
+
+    async getProjectsByOrganizationId(
+        organizationId: number,
+        paginationQueryDto: PaginationQueryDto
+    ): Promise<PaginatedResultDto<Project>> {
+        const organization = await this.organizationRepository.findOneBy({
+            id: organizationId
+        });
+
+        if (!organization) {
+            throw new NotFoundException(`Organization with id ${organizationId} not found`);
+        }
+        const {page, limit} = paginationQueryDto;
+
+        const [data, total] = await this.projectRepository.findAndCount({
+            where: {
+                organization: {
+                    id: organizationId
+                },
+            },
+            skip: (page - 1) * limit,
+            take: limit,
+            order: {
+                createdAt: 'DESC'
+            },
+        });
+        return {
+            data,
+            meta: {
+                total,
+                page,
+                limit,
+                totalPages: Math.ceil(total / limit),
+            }
+        };
+    }
+
+    async createProject(
+        userId: number,
+        organizationId: number,
+        createProjectDto: CreateProjectDto
+    ): Promise<Project> {
+        const organization = await this.organizationRepository.findOneBy({
+            id: organizationId
+        });
+
+        if (!organization) {
+            throw new NotFoundException(`Organization with id ${organizationId} not found`);
+        }
+
+        const occuredAt = new Date();
+
+        return this.dataSource.transaction(
+            async manager => {
+                const project = await manager.getRepository(Project).create({
+                    ...createProjectDto,
+                    organization
+                });
+
+                const savedProject = await manager.getRepository(Project).save(project);
+
+                await this.outboxService.create(
+                    {
+                        type: 'project.created',
+                        payload: {
+                            projectId: savedProject.id,
+                            organizationId: savedProject.organization.id,
+                            actorUserId: userId,
+                            occuredAt,
+                        },
+                        occuredAt,
+                    },
+                    manager,
+                );
+
+                return savedProject;
+            }
+        );
+    }
+
+    async deleteProject(
+        userId: number,
+        projectId: number
+    ): Promise<void> {
+        const project = await this.getProjectForAuthorization(
+            projectId
+        );
+
+
+        await this.projectPolicy.can(
+            userId,
+            project,
+            Permission.PROJECT_DELETE
+        );
+        
+        const occuredAt = new Date();
+        return this.dataSource.transaction(
+            async manager => {
+                await manager.getRepository(Project)
+                .delete({
+                    id: projectId
+                });
+
+                await this.outboxService.create(
+                    {
+                        type: 'project.deleted',
+                        payload: {
+                            projectId: project.id,
+                            organizationId: project.organization.id,
+                            actorUserId: userId,
+                            occuredAt,
+                        },
+                        occuredAt,
+                    },
+                    manager,
+                );
+
+            }
+        );
+    }
+
+    async updateProject(
+        userId: number,
+        projectId: number,
+        updateProjectDto: UpdateProjectDto
+    ): Promise<Project> {
+        const project = await this.getProjectForAuthorization(
+            projectId
+        );
+
+        await this.projectPolicy.can(
+            userId,
+            project,
+            Permission.PROJECT_UPDATE
+        );
+
+        const { organizationId, ...projectFields } = updateProjectDto;
+        Object.assign(project, projectFields);
+
+        if (organizationId !== undefined) {
+            const organization = await this.organizationRepository.findOneBy({
+                id: organizationId,
+            });
+
+            if (!organization) {
+                throw new NotFoundException(`Organization with id ${organizationId} not found`);
+            }
+
+            project.organization = organization;
+        }
+
+        const occuredAt = new Date();
+
+        return this.dataSource.transaction(
+            async manager => {
+                const updatedProject = await manager.getRepository(Project).save(project);
+
+                await this.outboxService.create(
+                    {
+                        type: 'project.updated',
+                        payload: {
+                            projectId: updatedProject.id,
+                            organizationId: updatedProject.organization.id,
+                            actorUserId: userId,
+                            occuredAt,
+                        },
+                        occuredAt,
+                    },
+                    manager,
+                );
+
+                return updatedProject;
+            }
+        );
+    }
+
+    async canUserAccessProject(
+        userId: number,
+        projectId: number
+    ): Promise<number> {
+        const project = await this.projectRepository.findOne({
+            where: {
+                id: projectId,
+            },
+            relations: {
+                organization: true
+            },
+        });
+
+        if (!project) {
+            throw new NotFoundException(`Project with id ${projectId} not found`);
+        }
+
+        return project.organization.id;
+    }
+
+    async getProjectAuthorizationContext(
+        projectId: number
+    ): Promise<ProjectAuthorizationContext> {
+        const project = await this.projectRepository.findOne({
+            where: {
+                id: projectId
+            },
+            relations: {
+                organization: true
+            },
+        });
+
+        if (!project) {
+            throw new NotFoundException(`Project with id ${projectId} not found`);
+        }
+
+        return {
+            projectId: project.id,
+            organizationId: project.organization.id
+        };
+    }
+
+    
+}
+
