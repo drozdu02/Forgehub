@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { DataSource, Repository } from 'typeorm';
 import { Organization } from './entities/organization.entity.js';
 import { CreateOrganizationDto } from './dto/create-organization.dto.js';
@@ -155,8 +155,75 @@ export class OrganizationsService {
                 return savedMembership;
             }
         )
+    }
 
+    async addMember(
+        actorUserId: number,
+        organizationId: number,
+        memberUserId: number,
+        role: OrganizationRole
+    ): Promise<OrganizationMember> {
+        const allowed = await this.authorizationService.hasPermission(
+            actorUserId,
+            organizationId,
+            Permission.MEMBER_INVITE
+        );
 
+        if (!allowed) {
+            throw new ForbiddenException('You are not allowed to add members to this organization');
+        }
+
+        const user = await this.dataSource.getRepository(User).findOne({
+            where: {
+                id: memberUserId
+            },
+        });
+
+        if (!user) {
+            throw new NotFoundException(`User with id ${memberUserId} not found`);
+        }
+
+        const existingMembership = await this.organizationMemberRepository.findOne({
+            where: {
+                organization: { id: organizationId },
+                user: { id: memberUserId }
+            },
+        });
+        
+        if (existingMembership) {
+            throw new ConflictException(`User with id ${memberUserId} is already a member of the organization`);
+        }
+        
+        const occuredAt = new Date();
+
+        return this.dataSource.transaction(
+            async (manager) => {
+                const membership = manager.getRepository(OrganizationMember).create({
+                    user,
+                    organization: { id: organizationId },
+                    role,
+                });
+
+                const savedMembership = await manager.getRepository(OrganizationMember).save(membership);
+
+                await this.outboxService.create(
+                    {
+                        type: 'organization.member.added',
+                        payload: {
+                            organizationId: organizationId,
+                            actorUserId: actorUserId,
+                            memberUserId: memberUserId,
+                            role: role,
+                            occuredAt,
+                        },
+                        occuredAt,
+                    },
+                    manager,
+                );
+
+                return savedMembership;
+            }
+        )
     }
  
     
