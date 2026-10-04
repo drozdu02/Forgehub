@@ -1,4 +1,4 @@
-import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { DataSource, Repository } from 'typeorm';
 import { Organization } from './entities/organization.entity.js';
 import { CreateOrganizationDto } from './dto/create-organization.dto.js';
@@ -222,6 +222,72 @@ export class OrganizationsService {
                 );
 
                 return savedMembership;
+            }
+        )
+    }
+
+    async removeMember(
+        actorUserId: number,
+        organizationId: number,
+        memberUserId: number
+    ): Promise<void> {
+        const allowed = await this.authorizationService.hasPermission(
+            actorUserId,
+            organizationId,
+            Permission.MEMBER_REMOVE
+        );
+
+        if (!allowed) {
+            throw new ForbiddenException('You are not allowed to remove members from this organization');
+        }
+
+        const membership = await this.organizationMemberRepository.findOne({
+            where: {
+                organization: { id: organizationId },
+                user: { id: memberUserId }
+            },
+        });
+
+        if (!membership) {
+            throw new NotFoundException(`Member with id ${memberUserId} not found in organization with id ${organizationId}`);
+        }
+
+        const role = membership.role;
+        const occuredAt = new Date();
+
+        return this.dataSource.transaction(
+            async (manager) => {
+                if (role === OrganizationRole.OWNER) {
+                    const owners = await manager.getRepository(OrganizationMember).find({
+                        where: {
+                            organization: { id: organizationId },
+                            role: OrganizationRole.OWNER
+                        },
+                    });
+
+                    if (owners.length === 1) {
+                        throw new BadRequestException('You cannot remove the last owner from the organization');
+                    }
+                }
+
+                await manager.getRepository(OrganizationMember).delete({
+                    id: membership.id,
+                });
+
+                await this.outboxService.create(
+                    {
+                        type: 'organization.member.removed',
+                        payload: {
+                            organizationId: organizationId,
+                            actorUserId: actorUserId,
+                            memberUserId: memberUserId,
+                            role: role,
+                            occuredAt,
+                        },
+                        occuredAt,
+                    },
+                    manager,
+                );
             }
         )
     }
