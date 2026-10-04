@@ -5,5 +5,6 @@ export class OrganizationCreatedEvent {
         public readonly name: string,
         public readonly slug: string,
         public readonly occuredAt: Date,
+        public readonly eventId: string,
     ) {}
 }

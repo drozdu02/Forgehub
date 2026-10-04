@@ -14,6 +14,7 @@ import { TaskStatusChangedAuditListener } from './listeners/task/task-status-cha
 import { UserVerifiedAuditListener } from './listeners/user/user-verified-audit.listener.js';
 import { UserLoggedInAuditListener } from './listeners/user/user-logged-in-audit.listener.js';
 import { UserRegisteredAuditListener } from './listeners/user/user-registered-audit.listener.js';
+import { OrganizationCreatedAuditListener } from './listeners/organization/organization-created-audit.listener.js';
 
 @Module({
   imports: [
@@ -34,7 +35,8 @@ import { UserRegisteredAuditListener } from './listeners/user/user-registered-au
     TaskStatusChangedAuditListener,
     UserVerifiedAuditListener,
     UserLoggedInAuditListener,
-    UserRegisteredAuditListener
+    UserRegisteredAuditListener,
+    OrganizationCreatedAuditListener
   ],
   exports: [AuditService],
 })
