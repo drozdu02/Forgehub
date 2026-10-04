@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseIntPipe, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseIntPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { OrganizationsService } from './organizations.service.js';
 import { CreateOrganizationDto } from './dto/create-organization.dto.js';
 import { ProjectsService } from '../projects/projects.service.js';
@@ -13,6 +13,8 @@ import { AuditService } from '../audit/audit.service.js';
 import { GetAuditLogsDto } from '../audit/dto/get-audit-logs.dto.js';
 import { PaginatedResultDto } from '../projects/dto/paginated-result.dto.js';
 import { PaginationQueryDto } from '../projects/dto/pagination-query.dto.js';
+import { ChangeMemberRoleDto } from './dto/change-member-role.dto.js';
+import { OrganizationMember } from './entities/organization-member.entity.js';
 
 @Controller('organizations')
 export class OrganizationsController {
@@ -83,6 +85,26 @@ export class OrganizationsController {
     return this.auditService.getForOrganization(
       organizationId,
       query
+    );
+  }
+
+  @UseGuards(
+    JwtAuthGuard,
+    AuthorizationGuard
+  )
+  @RequirePermission(Permission.MEMBER_UPDATE_ROLE)
+  @Patch(':organizationId/members/:memberUserId/role')
+  changeMemberRole(
+    @Param('organizationId', ParseIntPipe) organizationId: number,
+    @Param('memberUserId', ParseIntPipe) memberUserId: number,
+    @Body() changeMemberRoleDto: ChangeMemberRoleDto,
+    @CurrentUser() user: { userId: number }
+  ): Promise<OrganizationMember> {
+    return this.organizationsService.changeMemberRole(
+      user.userId,
+      organizationId,
+      memberUserId,
+      changeMemberRoleDto.role
     );
   }
 }
