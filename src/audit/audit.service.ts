@@ -52,12 +52,12 @@ export class AuditService {
         const queryBuilder = this.auditLogRepository
             .createQueryBuilder('audit')
             .where(
-                'audit.organization_id = :organizationId', {
+                'audit.organizationId = :organizationId', {
                     organizationId
                 }
             )
             .orderBy(
-                'audit.created_at',
+                'audit.createdAt',
                 'DESC'
             )
             .skip((page - 1) * limit)
@@ -73,7 +73,7 @@ export class AuditService {
 
         if (query.entityType) {
             queryBuilder.andWhere(
-                'audit.entity_type = :entityType', {
+                'audit.entityType = :entityType', {
                     entityType: query.entityType,
                 },
             );

@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { DataSource, In, Repository } from 'typeorm';
 import { Task } from './entities/task.entity.js';
 import { CreateTaskDto } from './dto/create-task.dto.js';
@@ -12,11 +12,6 @@ import { OrganizationMember } from '../organizations/entities/organization-membe
 import { TaskPolicy } from './policies/task.policy.js';
 import { Permission } from '../auth/enums/permissions.enum.js';
 import { TaskChanges } from '../events/events/interfaces/task-changes.interface.js';
-import { EventEmitter2 } from '@nestjs/event-emitter';
-import { TaskUpdatedEvent } from '../events/events/task/task-updated.event.js';
-import { TaskStatusChangedEvent } from '../events/events/task/task-status-changed.event.js';
-import { TaskAssignedEvent } from '../events/events/task/task-assigned.event.js';
-import { TaskDeletedEvent } from '../events/events/task/task-deleted.event.js';
 import { TaskPriority } from './enums/task-priority.enum.js';
 import OutboxService from '../infrastructure/outbox/outbox.service.js';
 @Injectable()
@@ -38,7 +33,6 @@ export class TasksService {
         private readonly dataSource: DataSource,
 
         private readonly taskPolicy: TaskPolicy,
-        private readonly eventEmitter: EventEmitter2,
         private readonly outboxService: OutboxService,
     ){}
 
