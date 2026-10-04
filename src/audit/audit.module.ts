@@ -16,6 +16,7 @@ import { UserLoggedInAuditListener } from './listeners/user/user-logged-in-audit
 import { UserRegisteredAuditListener } from './listeners/user/user-registered-audit.listener.js';
 import { OrganizationCreatedAuditListener } from './listeners/organization/organization-created-audit.listener.js';
 import { MemberAddedAuditListener } from './listeners/organization/member-added-audit.listener.js';
+import { MemberRoleChangedAuditListener } from './listeners/organization/member-role-changed-audit.listener.js';
 
 @Module({
   imports: [
@@ -38,7 +39,8 @@ import { MemberAddedAuditListener } from './listeners/organization/member-added-
     UserLoggedInAuditListener,
     UserRegisteredAuditListener,
     OrganizationCreatedAuditListener,
-    MemberAddedAuditListener
+    MemberAddedAuditListener,
+    MemberRoleChangedAuditListener
   ],
   exports: [AuditService],
 })
